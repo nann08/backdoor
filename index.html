@@ -1576,13 +1576,14 @@
         });
       }
 
+      // Upper Floor Catwalks (Snug against the side walls at ±8.8m)
       addUpperFloorDeck(-8.8, 0, 4.4, 11.2);
       addUpperFloorDeck(8.8, 0, 4.4, 11.2);
 
       addBoxWall(-6.65, UPPER_Y, 0, 0.25, 1.05, 8.4, matWallCover, true, 'railing', true);
       addBoxWall(6.65, UPPER_Y, 0, 0.25, 1.05, 8.4, matWallCover, true, 'railing', true);
 
-      function addWalkableStaircase(xCenter, zStart, zEnd, width = 2.4) {
+      function addWalkableStaircase(xCenter, zStart, zEnd, width = 2.3) {
         const steps = 14;
         const dz = (zEnd - zStart) / steps;
         const dy = UPPER_Y / steps;
@@ -1601,76 +1602,79 @@
           scene.add(stepMesh);
         }
 
-        // 1. Solid vertical back wall at the high end (zEnd) of the stairs
-        // Closes off the 3.1m high vertical face under the top of the stairs so players cannot walk through the back of the stairs!
-        const backWallH = UPPER_Y;
+        // 1. Solid vertical back wall under the top landing (zEnd) of the stairs:
+        // Visual mesh is full height (3.1m); collider maxY is 2.05m so ground-floor players (footY < 2m)
+        // cannot walk through the back wall of the stairs, while players running up the stairs (footY > 2.2m near zEnd)
+        // pass smoothly onto the 2nd-floor catwalk with zero obstruction!
         const backWallZ = zEnd > zStart ? zEnd - 0.12 : zEnd + 0.12;
-        addBoxWall(xCenter, 0, backWallZ, width, backWallH, 0.28, matWallCover, true, 'wall', false);
+        const backWallMesh = new THREE.Mesh(
+          new THREE.BoxGeometry(width, UPPER_Y, 0.24),
+          matWallCover
+        );
+        backWallMesh.position.set(xCenter, UPPER_Y / 2, backWallZ);
+        backWallMesh.castShadow = true;
+        backWallMesh.receiveShadow = true;
+        scene.add(backWallMesh);
 
-        // 2. Solid side skirt walls & colliders on BOTH sides (inner and outer)
-        const innerSideX = xCenter > 0 ? xCenter - width / 2 - 0.08 : xCenter + width / 2 + 0.08;
-        const outerSideX = xCenter > 0 ? xCenter + width / 2 + 0.08 : xCenter - width / 2 - 0.08;
+        wallColliders.push({
+          minX: xCenter - width / 2 + 0.04,
+          maxX: xCenter + width / 2 - 0.04,
+          minZ: backWallZ - 0.14,
+          maxZ: backWallZ + 0.14,
+          minY: 0,
+          maxY: 2.05,
+          mapType: 'wall',
+          mantleable: false,
+          mesh: backWallMesh
+        });
+
+        // 2. Thin side guardrail colliders flush with the stair edges (stops walking sideways through the stairs
+        // while keeping both the stair tread path and the 1.10m outer wall squeeze gap completely clear!)
+        const isLeft = xCenter < 0;
+        const outerEdgeX = isLeft ? xCenter - width / 2 : xCenter + width / 2;
+        const innerEdgeX = isLeft ? xCenter + width / 2 : xCenter - width / 2;
         const minZ = Math.min(zStart, zEnd);
         const maxZ = Math.max(zStart, zEnd);
-        const stairLen = maxZ - minZ;
 
-        // Inner side solid collider
+        // Inner side rail collider (inset slightly from zStart/zEnd entrances so entering/exiting stairs is effortless)
         wallColliders.push({
-          minX: innerSideX - 0.18,
-          maxX: innerSideX + 0.18,
-          minZ: minZ - 0.1,
-          maxZ: maxZ + 0.1,
+          minX: innerEdgeX - 0.05,
+          maxX: innerEdgeX + 0.05,
+          minZ: minZ + 0.35,
+          maxZ: maxZ - 0.35,
           minY: 0,
           maxY: UPPER_Y + 0.85,
-          mapType: 'wall',
+          mapType: 'railing',
           mantleable: false,
           mesh: null
         });
 
-        // Outer side solid collider (between staircase and outer wall)
+        // Outer side rail collider (flush with outer stair edge so the 1.10m squeeze gap to the wall is open)
         wallColliders.push({
-          minX: outerSideX - 0.18,
-          maxX: outerSideX + 0.18,
-          minZ: minZ - 0.1,
-          maxZ: maxZ + 0.1,
+          minX: outerEdgeX - 0.04,
+          maxX: outerEdgeX + 0.04,
+          minZ: minZ + 0.35,
+          maxZ: maxZ - 0.35,
           minY: 0,
           maxY: UPPER_Y + 0.85,
-          mapType: 'wall',
+          mapType: 'railing',
           mantleable: false,
           mesh: null
         });
 
-        // 3. Solid under-stair block colliders (prevents walking through the sloped volume under the stairs from any direction)
-        const blockSteps = 4;
-        const subZ = stairLen / blockSteps;
-        for (let b = 0; b < blockSteps; b++) {
-          const frac = (b + 0.5) / blockSteps;
-          const bZ = zStart + frac * (zEnd - zStart);
-          const bH = ((b + 1) / blockSteps) * (UPPER_Y - 0.15);
-          wallColliders.push({
-            minX: xCenter - width / 2 + 0.05,
-            maxX: xCenter + width / 2 - 0.05,
-            minZ: bZ - subZ / 2,
-            maxZ: bZ + subZ / 2,
-            minY: 0,
-            maxY: bH,
-            mapType: 'wall',
-            mantleable: false,
-            mesh: null
-          });
-        }
-
-        // 4. Build 3D Tubular Steel Handrails, Mid-Rails & Vertical Baluster Posts on staircase edges
-        const railSides = [innerSideX, outerSideX];
+        // 3. Build 3D Tubular Steel Handrails, Mid-Rails & Vertical Baluster Posts on staircase edges
+        const railSides = [
+          isLeft ? innerEdgeX - 0.04 : innerEdgeX + 0.04,
+          isLeft ? outerEdgeX + 0.04 : outerEdgeX - 0.04
+        ];
         const runZ = zEnd - zStart;
         const riseY = UPPER_Y;
         const railLength = Math.hypot(runZ, riseY);
         const slopeAngle = Math.atan2(riseY, Math.abs(runZ)) * (runZ >= 0 ? -1 : 1);
 
         railSides.forEach((rx) => {
-          // Top 3D tubular steel handrail
           const topRail = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.034, 0.034, railLength + 0.2, 12),
+            new THREE.CylinderGeometry(0.032, 0.032, railLength + 0.18, 12),
             matDarkIron
           );
           topRail.position.set(rx, riseY / 2 + 0.92, (zStart + zEnd) / 2);
@@ -1678,16 +1682,14 @@
           topRail.castShadow = true;
           scene.add(topRail);
 
-          // Mid-height safety rail
           const midRail = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.022, 0.022, railLength + 0.15, 10),
+            new THREE.CylinderGeometry(0.020, 0.020, railLength + 0.14, 10),
             matDarkIron
           );
           midRail.position.set(rx, riseY / 2 + 0.50, (zStart + zEnd) / 2);
           midRail.rotation.x = Math.PI / 2 + slopeAngle;
           scene.add(midRail);
 
-          // 5 Vertical 3D steel baluster posts anchored into the steps
           const postCount = 5;
           for (let pIdx = 0; pIdx <= postCount; pIdx++) {
             const frac = pIdx / postCount;
@@ -1695,7 +1697,7 @@
             const pyBase = frac * riseY;
             const postH = 0.94;
             const postMesh = new THREE.Mesh(
-              new THREE.CylinderGeometry(0.028, 0.032, postH, 10),
+              new THREE.CylinderGeometry(0.026, 0.028, postH, 10),
               matDarkIron
             );
             postMesh.position.set(rx, pyBase + postH / 2, pz);
@@ -1704,11 +1706,12 @@
           }
         });
 
+        // Walkable stair surface strictly between the handrails so players in the side squeeze gap stay on 1F
         walkableSurfaces.push({
-          minX: xCenter - width / 2 - 0.15,
-          maxX: xCenter + width / 2 + 0.15,
-          minZ: minZ - 0.2,
-          maxZ: maxZ + 0.2,
+          minX: xCenter - width / 2 - 0.02,
+          maxX: xCenter + width / 2 + 0.02,
+          minZ: minZ - 0.35,
+          maxZ: maxZ + 0.35,
           getY: (px, pz) => {
             const t = Math.max(0, Math.min(1, (pz - zStart) / (zEnd - zStart)));
             return t * UPPER_Y;
@@ -1716,22 +1719,13 @@
           mapType: 'stairs'
         });
       }
-      addWalkableStaircase(-8.8, 12.2, 5.6, 2.5);
-      addWalkableStaircase(8.8, 12.2, 5.6, 2.5);
-      addWalkableStaircase(-8.8, -12.2, -5.6, 2.5);
-      addWalkableStaircase(8.8, -12.2, -5.6, 2.5);
 
-      // Solid end-cap railings on upper catwalk flanks beside the staircases (prevents walking off or through catwalk edges)
-      // West Catwalk (+Z and -Z ends)
-      addBoxWall(-10.55, UPPER_Y, 5.6, 0.95, 1.05, 0.25, matWallCover, true, 'railing', false);
-      addBoxWall(-7.10, UPPER_Y, 5.6, 0.95, 1.05, 0.25, matWallCover, true, 'railing', false);
-      addBoxWall(-10.55, UPPER_Y, -5.6, 0.95, 1.05, 0.25, matWallCover, true, 'railing', false);
-      addBoxWall(-7.10, UPPER_Y, -5.6, 0.95, 1.05, 0.25, matWallCover, true, 'railing', false);
-      // East Catwalk (+Z and -Z ends)
-      addBoxWall(10.55, UPPER_Y, 5.6, 0.95, 1.05, 0.25, matWallCover, true, 'railing', false);
-      addBoxWall(7.10, UPPER_Y, 5.6, 0.95, 1.05, 0.25, matWallCover, true, 'railing', false);
-      addBoxWall(10.55, UPPER_Y, -5.6, 0.95, 1.05, 0.25, matWallCover, true, 'railing', false);
-      addBoxWall(7.10, UPPER_Y, -5.6, 0.95, 1.05, 0.25, matWallCover, true, 'railing', false);
+      // 4 Tactical Staircases positioned close to the outer wall (xCenter = ±8.85, width = 2.3m)
+      // Outer stair edge is at ±10.00m, leaving a snug 1.10m squeeze gap to the ±11.10m wall!
+      addWalkableStaircase(-8.85, 12.2, 5.6, 2.3);
+      addWalkableStaircase(8.85, 12.2, 5.6, 2.3);
+      addWalkableStaircase(-8.85, -12.2, -5.6, 2.3);
+      addWalkableStaircase(8.85, -12.2, -5.6, 2.3);
 
       // Overtime Flag
       const flagGroup = new THREE.Group();
@@ -3493,7 +3487,7 @@
         showCombatToast(type === 'frag' ? 'FRAG OUT!' : 'STUN OUT!');
       }
 
-      function resolveWorldCollisions(entity, radius = 0.48) {
+      function resolveWorldCollisions(entity, radius = 0.36) {
         const footY = entity.footY || 0;
         // True physical room interior: arena wall center 11.5 / 17.5, wall thickness 0.8 -> inner face is 11.1 / 17.1
         // Center of entity must not exceed (innerFace - radius)
@@ -3545,14 +3539,20 @@
         }
       }
 
-      function moveEntitySubstepped(entity, moveDX, moveDZ, radius = 0.48) {
+      function moveEntitySubstepped(entity, moveDX, moveDZ, radius = 0.36) {
         const steps = 4;
         const stepX = moveDX / steps;
         const stepZ = moveDZ / steps;
         for (let s = 0; s < steps; s++) {
           entity.x += stepX;
+          if (entity.grounded !== false) {
+            entity.footY = getFloorElevationAt(entity.x, entity.z, entity.footY || 0);
+          }
           resolveWorldCollisions(entity, radius);
           entity.z += stepZ;
+          if (entity.grounded !== false) {
+            entity.footY = getFloorElevationAt(entity.x, entity.z, entity.footY || 0);
+          }
           resolveWorldCollisions(entity, radius);
         }
       }
@@ -4158,12 +4158,12 @@
             p.footY = THREE.MathUtils.lerp(p.mantleStartY, p.mantleTargetY, prog);
             p.x = THREE.MathUtils.lerp(p.x, p.mantleTargetX, dt * 12);
             p.z = THREE.MathUtils.lerp(p.z, p.mantleTargetZ, dt * 12);
-            resolveWorldCollisions(p, 0.48);
+            resolveWorldCollisions(p, 0.36);
             if (p.mantleTimer <= 0) {
               p.mantling = false;
               p.footY = p.mantleTargetY;
               p.grounded = true;
-              resolveWorldCollisions(p, 0.48);
+              resolveWorldCollisions(p, 0.36);
             }
           } else {
             p.sprinting = Boolean(canMoveNow && keys['ShiftLeft'] && moveForward > 0 && !p.ads && !p.crouching && !p.reloading);
@@ -4200,7 +4200,7 @@
             p.vz += (wishVZ - p.vz) * Math.min(1, dt * accelRate);
 
             if (canMoveNow && Math.hypot(p.vx, p.vz) > 0.02) {
-              moveEntitySubstepped(p, p.vx * dt, p.vz * dt, 0.48);
+              moveEntitySubstepped(p, p.vx * dt, p.vz * dt, 0.36);
             }
 
             if (isMoving) {
