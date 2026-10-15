@@ -329,7 +329,23 @@
 
       <!-- Mantle Prompt Badge (Center-Lower) -->
       <div id="mantle-prompt" class="hidden absolute top-[62%] left-1/2 -translate-x-1/2 bg-black/80 border border-amber-400/60 px-2.5 py-0.5 rounded-xs font-mono-cod text-[10px] text-amber-200 tracking-wider uppercase shadow">
-        [SPACE] MANTLE / CLIMB LEDGE
+        [SPACE / B] MANTLE / CLIMB LEDGE
+      </div>
+
+      <!-- 2v2 Teammate Spectator HUD Banner -->
+      <div id="spectate-banner" class="hidden absolute bottom-14 left-1/2 -translate-x-1/2 bg-black/85 border border-cyan-400/75 px-4 py-1.5 rounded-xs shadow-2xl flex flex-col items-center gap-0.5 z-20">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+          <span id="spectate-title-text" class="font-cod text-xs sm:text-sm tracking-wider uppercase text-cyan-300 font-bold">
+            SPECTATING TEAMMATE: [ALLY]SoapMac
+          </span>
+          <span id="spectate-hp-badge" class="px-1.5 py-0.2 bg-cyan-950/90 border border-cyan-400/50 text-[10px] font-mono-cod text-cyan-200 rounded-xs">
+            100 HP
+          </span>
+        </div>
+        <div class="text-[9px] font-mono-cod text-neutral-300 tracking-wider uppercase">
+          MATCH CONTINUES UNTIL SQUAD ELIMINATED OR FLAG CAPTURED — [V / Y] TOGGLE POV
+        </div>
       </div>
 
       <!-- Kill Feed / Elimination Splash Effect -->
@@ -365,12 +381,16 @@
         </div>
       </div>
 
-      <!-- 5. BOTTOM-LEFT: ONLY PLAYER USERNAME -->
+      <!-- 5. BOTTOM-LEFT: PLAYER USERNAME & SWITCH PRO CONTROLLER STATUS -->
       <div class="interactive-hud absolute bottom-2.5 left-3.5 flex items-center gap-1.5 select-none">
         <button id="btn-edit-username" type="button" title="Click to change username" class="flex items-center gap-1.5 bg-black/55 hover:bg-black/80 border border-white/15 px-2.5 py-1 rounded-xs cursor-pointer transition">
           <span id="net-status-dot" class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
           <span id="hud-player-username" class="font-mono-cod text-[11px] font-semibold text-white cod-text-shadow tracking-tight">[YOU] GhostActual</span>
         </button>
+        <div id="gamepad-status-badge" class="hidden items-center gap-1 bg-emerald-950/80 border border-emerald-400/50 px-2 py-1 rounded-xs text-[9px] font-mono-cod text-emerald-300 shadow">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+          <span id="gamepad-status-label">SWITCH PRO READY</span>
+        </div>
       </div>
 
       <!-- 6. WEAPON SILHOUETTE, AMMO & EQUIPMENT (BOTTOM-RIGHT ON PC, LOWER-MIDDLE ON MOBILE) -->
@@ -501,7 +521,8 @@
               <div>
                 <label for="select-control-scheme" class="block text-[10px] font-mono-cod text-neutral-300 mb-1">CONTROLS</label>
                 <select id="select-control-scheme" class="w-full bg-black/80 border border-cyan-400/35 rounded-xs px-2 py-1.5 text-cyan-200 font-mono-cod text-[11px] focus:outline-none">
-                  <option value="auto" selected>Auto (PC/iOS)</option>
+                  <option value="auto" selected>Auto (PC/Pro/iOS)</option>
+                  <option value="controller">Switch Pro Controller</option>
                   <option value="pc">PC Mouse/KB</option>
                   <option value="mobile">iOS Touch HUD</option>
                 </select>
@@ -2516,6 +2537,10 @@
           mantleTargetZ: 0,
           dying: false,
           deathTimer: 0,
+          spectating: false,
+          spectateThirdPerson: false,
+          spectateYawOffset: 0,
+          spectatePitchOffset: 0.15,
           stunCount: 1,
           fragCount: 1,
           stunnedTimer: 0,
@@ -2588,10 +2613,12 @@
           hp: 100,
           targetX: -3.0,
           targetZ: 5.5,
-          aiTimer: 0.3,
-          burstCooldown: 0.9,
+          aiTimer: 0.2,
+          burstCooldown: 0.55,
           burstRemaining: 0,
-          muzzleTimer: 0
+          strafeDir: 1,
+          muzzleTimer: 0,
+          bobPhase: 0
         },
 
         projectiles: [],
@@ -2844,6 +2871,12 @@
         p.mantling = false;
         p.dying = false;
         p.deathTimer = 0;
+        p.spectating = false;
+        p.spectateThirdPerson = false;
+        p.spectateYawOffset = 0;
+        p.spectatePitchOffset = 0.15;
+        weaponRig.visible = true;
+        document.getElementById('spectate-banner').classList.add('hidden');
         p.stunCount = 1;
         p.fragCount = 1;
         p.stunnedTimer = 0;
@@ -2895,8 +2928,11 @@
         al.footY = 0;
         al.z = 13.2;
         al.yaw = Math.PI;
-        al.aiTimer = 0.3;
-        al.burstCooldown = 0.8;
+        al.aiTimer = 0.15;
+        al.burstCooldown = 0.45;
+        al.burstRemaining = 0;
+        al.strafeDir = 1;
+        al.bobPhase = 0;
         al.rig.root.visible = is2v2;
         al.rig.root.rotation.set(0, Math.PI, 0);
         al.rig.root.position.set(al.x, 0, al.z);
@@ -2991,6 +3027,309 @@
         }
       }
 
+      // --- 13B. NINTENDO SWITCH PRO CONTROLLER / CONSOLE GAMEPAD ENGINE (60FPS + AIM ASSIST + HAPTICS) ---
+      const gamepadState = {
+        connected: false,
+        index: null,
+        id: '',
+        moveX: 0,
+        moveY: 0,
+        lookX: 0,
+        lookY: 0,
+        smoothLookX: 0,
+        smoothLookY: 0,
+        sprintLock: false,
+        leanHeld: false,
+        prevButtons: {}
+      };
+
+      function updateGamepadBadge(connected, labelText = 'SWITCH PRO READY') {
+        const badge = document.getElementById('gamepad-status-badge');
+        const lbl = document.getElementById('gamepad-status-label');
+        if (badge) {
+          badge.classList.toggle('hidden', !connected);
+          badge.classList.toggle('flex', connected);
+        }
+        if (lbl && labelText) lbl.textContent = labelText;
+      }
+
+      window.addEventListener('gamepadconnected', (e) => {
+        gamepadState.connected = true;
+        gamepadState.index = e.gamepad.index;
+        gamepadState.id = e.gamepad.id || 'Pro Controller';
+        const isSwitchPro = /pro controller|057e|2009|nintendo|switch/i.test(gamepadState.id);
+        updateGamepadBadge(true, isSwitchPro ? 'SWITCH PRO CONNECTED' : 'CONTROLLER CONNECTED');
+        showCombatToast(isSwitchPro ? 'NINTENDO SWITCH PRO CONTROLLER CONNECTED!' : 'GAMEPAD CONNECTED — CONSOLE CONTROLS READY!');
+      });
+
+      window.addEventListener('gamepaddisconnected', (e) => {
+        if (gamepadState.index === e.gamepad.index) {
+          gamepadState.connected = false;
+          gamepadState.index = null;
+          gamepadState.moveX = 0;
+          gamepadState.moveY = 0;
+          gamepadState.lookX = 0;
+          gamepadState.lookY = 0;
+          updateGamepadBadge(false);
+        }
+      });
+
+      function triggerGamepadRumble(strongMag = 0.5, weakMag = 0.35, durationMs = 75) {
+        if (!navigator.getGamepads) return;
+        try {
+          const pads = navigator.getGamepads();
+          const gp = pads[gamepadState.index] || pads[0] || pads[1] || pads[2] || pads[3];
+          if (gp && gp.vibrationActuator && typeof gp.vibrationActuator.playEffect === 'function') {
+            gp.vibrationActuator.playEffect('dual-rumble', {
+              startDelay: 0,
+              duration: durationMs,
+              weakMagnitude: Math.min(1, Math.max(0, weakMag)),
+              strongMagnitude: Math.min(1, Math.max(0, strongMag))
+            }).catch(() => {});
+          }
+        } catch (e) {}
+      }
+
+      function applyConsoleStickCurve(rawX, rawY, innerDeadzone = 0.09, outerDeadzone = 0.94, exponent = 1.56) {
+        const mag = Math.hypot(rawX, rawY);
+        if (mag <= innerDeadzone) return { x: 0, y: 0, mag: 0 };
+        const clamped = Math.min(outerDeadzone, mag);
+        const norm = (clamped - innerDeadzone) / (outerDeadzone - innerDeadzone);
+        const curved = Math.pow(norm, exponent);
+        const scale = curved / mag;
+        return { x: rawX * scale, y: rawY * scale, mag: norm };
+      }
+
+      function pollGamepadInput(dt) {
+        if (!navigator.getGamepads) return;
+        const pads = navigator.getGamepads();
+        let gp = null;
+        for (let i = 0; i < pads.length; i++) {
+          if (pads[i] && pads[i].connected) {
+            gp = pads[i];
+            break;
+          }
+        }
+        if (!gp) {
+          gamepadState.moveX = 0;
+          gamepadState.moveY = 0;
+          gamepadState.lookX = 0;
+          gamepadState.lookY = 0;
+          return;
+        }
+
+        if (!gamepadState.connected) {
+          gamepadState.connected = true;
+          gamepadState.index = gp.index;
+          gamepadState.id = gp.id || 'Pro Controller';
+          const isSwitchPro = /pro controller|057e|2009|nintendo|switch/i.test(gamepadState.id);
+          updateGamepadBadge(true, isSwitchPro ? 'SWITCH PRO CONNECTED' : 'CONTROLLER CONNECTED');
+        }
+
+        const btnPressed = (idx) => {
+          const b = gp.buttons[idx];
+          if (!b) return false;
+          return Boolean(b.pressed || b.value > 0.45);
+        };
+        const btnJustPressed = (idx) => {
+          const cur = btnPressed(idx);
+          const prev = Boolean(gamepadState.prevButtons[idx]);
+          return cur && !prev;
+        };
+
+        // Menu / Modal shortcuts on Switch Pro Controller (B=0, A=1, Plus=9, Minus=8, ZR=7)
+        if (appScreenState === 'startup') {
+          if (btnJustPressed(0) || btnJustPressed(1) || btnJustPressed(9) || btnJustPressed(7)) {
+            document.getElementById('btn-startup-play').click();
+          }
+        } else if (appScreenState === 'setup' || !document.getElementById('online-modal').classList.contains('hidden')) {
+          if (btnJustPressed(9) || btnJustPressed(0) || btnJustPressed(1)) {
+            document.getElementById('btn-save-online').click();
+          } else if (btnJustPressed(8)) {
+            document.getElementById('btn-close-online').click();
+          }
+        } else if (!state.roundActive && !document.getElementById('round-modal').classList.contains('hidden')) {
+          if (btnJustPressed(0) || btnJustPressed(1) || btnJustPressed(9)) {
+            document.getElementById('btn-modal-rematch').click();
+          } else if (btnJustPressed(8)) {
+            document.getElementById('btn-modal-setup').click();
+          }
+        } else if (appScreenState === 'playing') {
+          // Minus (8) or Plus (9) opens setup lobby
+          if (btnJustPressed(8)) {
+            openOnlineModal();
+          }
+          // Pre-round countdown loadout cycling via X (3) or D-Pad Left/Right (14, 15)
+          if (state.countdownTime > 0) {
+            const loadouts = ['mp5', 'ak47', 'shotgun', 'pistol'];
+            if (btnJustPressed(3) || btnJustPressed(15)) {
+              const nextIdx = (loadouts.indexOf(state.weaponKey) + 1) % loadouts.length;
+              applySharedLoadout(loadouts[nextIdx], true);
+              showCombatToast(`SHARED LOADOUT: ${WEAPONS[state.weaponKey].name}`);
+            } else if (btnJustPressed(14)) {
+              const prevIdx = (loadouts.indexOf(state.weaponKey) + loadouts.length - 1) % loadouts.length;
+              applySharedLoadout(loadouts[prevIdx], true);
+              showCombatToast(`SHARED LOADOUT: ${WEAPONS[state.weaponKey].name}`);
+            } else if (btnJustPressed(12)) {
+              state.mode = (state.mode === '1v1') ? '2v2' : '1v1';
+              document.getElementById('mode-select').value = state.mode;
+              resetPositionsForRound();
+              showCombatToast(`SWITCHED TO ${state.mode.toUpperCase()} MODE`);
+            }
+          }
+        }
+
+        // Read Analog Sticks (Switch Pro Standard Mapping: axes[0..1] Left Stick, axes[2..3] Right Stick)
+        const rawLX = gp.axes[0] || 0;
+        const rawLY = gp.axes[1] || 0;
+        const rawRX = gp.axes[2] || 0;
+        const rawRY = gp.axes[3] || 0;
+
+        const leftStick = applyConsoleStickCurve(rawLX, rawLY, 0.10, 0.94, 1.25);
+        const rightStick = applyConsoleStickCurve(rawRX, rawRY, 0.08, 0.94, 1.58);
+
+        gamepadState.moveX = leftStick.x;
+        gamepadState.moveY = -leftStick.y; // Up on stick is +1 forward
+
+        // Exponential frame-rate-independent smoothing on right stick look
+        const smoothFactor = Math.min(1, dt * 32);
+        gamepadState.smoothLookX += (rightStick.x - gamepadState.smoothLookX) * smoothFactor;
+        gamepadState.smoothLookY += (rightStick.y - gamepadState.smoothLookY) * smoothFactor;
+
+        // Turn-rate boost when right stick is pegged (> 0.88)
+        const turnBoost = rightStick.mag > 0.88 ? 1.0 + ((rightStick.mag - 0.88) / 0.12) * 0.48 : 1.0;
+        gamepadState.lookX = gamepadState.smoothLookX * turnBoost;
+        gamepadState.lookY = gamepadState.smoothLookY * turnBoost;
+
+        const p = state.player;
+        if (state.roundActive && appScreenState === 'playing') {
+          if (p.spectating) {
+            // Spectator controls on Switch Pro Controller: Right Stick orbits 3P camera; Y(2) / B(0) / R3(11) toggles 1P/3P POV
+            if (Math.abs(gamepadState.lookX) > 0.001 || Math.abs(gamepadState.lookY) > 0.001) {
+              p.spectateYawOffset -= gamepadState.lookX * 2.8 * state.mouseSensMult * dt;
+              p.spectatePitchOffset = Math.max(-0.65, Math.min(0.85, p.spectatePitchOffset + gamepadState.lookY * 2.1 * state.mouseSensMult * dt));
+            }
+            if (btnJustPressed(2) || btnJustPressed(3) || btnJustPressed(11)) {
+              p.spectateThirdPerson = !p.spectateThirdPerson;
+              showCombatToast(p.spectateThirdPerson ? 'SPECTATOR: 3RD-PERSON FOLLOW CAM' : 'SPECTATOR: 1ST-PERSON TEAMMATE POV');
+            }
+          } else if (!p.dying) {
+            // ZL (button 6): Aim Down Sights (ADS)
+            const zlHeld = btnPressed(6);
+            if (zlHeld !== gamepadState._wasZlHeld) {
+              p.ads = zlHeld;
+              if (zlHeld && p.sliding) p.sliding = false;
+              gamepadState._wasZlHeld = zlHeld;
+            }
+
+            // Console Slowdown & Rotational Aim Assist when right stick or left stick is active
+            let aimSlowdown = 1.0;
+            let rotAssistYaw = 0;
+            let rotAssistPitch = 0;
+
+            const activeEnemies = state.enemies.filter(e => e.active && e.hp > 0 && !e.dying);
+            const lookVecX = -Math.sin(p.yaw);
+            const lookVecZ = -Math.cos(p.yaw);
+            let bestEnemyAngle = 0.19; // ~10.8 deg assist cone
+
+            for (let i = 0; i < activeEnemies.length; i++) {
+              const en = activeEnemies[i];
+              const dx = en.x - p.x;
+              const dz = en.z - p.z;
+              const dist = Math.hypot(dx, dz);
+              if (dist < 0.8 || dist > 32) continue;
+              const dot = (dx / dist) * lookVecX + (dz / dist) * lookVecZ;
+              const angle = Math.acos(Math.max(-1, Math.min(1, dot)));
+              if (angle < bestEnemyAngle && hasLineOfSight(p.x, p.footY + 1.55, p.z, en.x, en.footY + 1.5, en.z)) {
+                bestEnemyAngle = angle;
+                const ConeFrac = 1.0 - (angle / 0.19);
+                aimSlowdown = THREE.MathUtils.lerp(1.0, p.ads ? 0.54 : 0.64, ConeFrac);
+
+                // Subtle Rotational Aim Assist when strafing or actively tracking with right stick
+                if (leftStick.mag > 0.15 || rightStick.mag > 0.08) {
+                  const targetYaw = Math.atan2(-dx, -dz);
+                  let yawDiff = targetYaw - p.yaw;
+                  while (yawDiff > Math.PI) yawDiff -= Math.PI * 2;
+                  while (yawDiff < -Math.PI) yawDiff += Math.PI * 2;
+
+                  const targetChestY = en.footY + 1.38;
+                  const targetPitch = Math.atan2(targetChestY - p.y, dist);
+                  const pitchDiff = targetPitch - p.pitch;
+
+                  const pullStrength = (p.ads ? 2.35 : 1.55) * ConeFrac;
+                  rotAssistYaw = yawDiff * pullStrength * dt;
+                  rotAssistPitch = pitchDiff * (pullStrength * 0.65) * dt;
+                }
+              }
+            }
+
+            if (Math.abs(gamepadState.lookX) > 0.0005 || Math.abs(gamepadState.lookY) > 0.0005 || Math.abs(rotAssistYaw) > 0.0001) {
+              const yawSpeed = (p.ads ? 2.15 : 3.45) * state.mouseSensMult * aimSlowdown;
+              const pitchSpeed = (p.ads ? 1.45 : 2.30) * state.mouseSensMult * aimSlowdown;
+              p.yaw -= gamepadState.lookX * yawSpeed * dt - rotAssistYaw;
+              p.pitch = Math.max(-1.42, Math.min(1.42, p.pitch - gamepadState.lookY * pitchSpeed * dt + rotAssistPitch));
+            }
+
+            // L3 (button 10) or full forward tilt engages sprint
+            if (btnJustPressed(10)) {
+              gamepadState.sprintLock = !gamepadState.sprintLock;
+            }
+            if (gamepadState.moveY < 0.25) {
+              gamepadState.sprintLock = false;
+            }
+
+            // R3 (button 11): Tactical Peek/Lean
+            gamepadState.leanHeld = btnPressed(11);
+
+            // B (button 0): Jump / Mantle Ledge
+            if (btnJustPressed(0)) {
+              triggerMantleOrJump();
+            }
+
+            // A (button 1): Crouch / Slide
+            if (btnJustPressed(1) && state.countdownTime <= 0) {
+              if ((p.sprinting || gamepadState.moveY > 0.78) && p.grounded && !p.sliding) {
+                p.sliding = true;
+                p.slideTimer = 0.52;
+                p.crouching = true;
+                triggerGamepadRumble(0.25, 0.2, 60);
+              } else {
+                p.crouching = !p.crouching;
+                p.sliding = false;
+              }
+            }
+
+            // Y (button 2) or X (button 3 during live round): Reload Weapon
+            if ((btnJustPressed(2) || (btnJustPressed(3) && state.countdownTime <= 0))) {
+              triggerReload();
+            }
+
+            // R (button 5): Frag Grenade | L (button 4): Stun Grenade
+            if (btnJustPressed(5)) throwGrenade('frag');
+            if (btnJustPressed(4)) throwGrenade('stun');
+
+            // ZR (button 7): Fire Weapon (supports both full-auto hold and semi-auto tap)
+            const zrHeld = btnPressed(7);
+            if (zrHeld && state.countdownTime <= 0) {
+              const wpn = WEAPONS[state.weaponKey];
+              if (btnJustPressed(7) || (wpn.auto && p.fireCooldown <= 0)) {
+                const prevMag = p.mag;
+                attemptPlayerFire();
+                if (p.mag < prevMag) {
+                  const rumblePower = state.weaponKey === 'shotgun' ? 0.85 : (state.weaponKey === 'ak47' ? 0.58 : 0.38);
+                  triggerGamepadRumble(rumblePower, rumblePower * 0.7, state.weaponKey === 'shotgun' ? 110 : 55);
+                }
+              }
+            }
+          }
+        }
+
+        // Save button states for edge detection on next frame
+        for (let bIdx = 0; bIdx < gp.buttons.length; bIdx++) {
+          gamepadState.prevButtons[bIdx] = btnPressed(bIdx);
+        }
+      }
+
       // --- 13. Tactical FPS RESPONSIVE CONTROLS & RAW MOUSE INPUT ---
       const keys = {};
       let isPointerLocked = false;
@@ -3028,7 +3367,14 @@
           triggerMantleOrJump();
         }
         if (e.code === 'KeyR') triggerReload();
-        if (e.code === 'KeyV') state.player.ads = !state.player.ads;
+        if (e.code === 'KeyV') {
+          if (state.player.spectating) {
+            state.player.spectateThirdPerson = !state.player.spectateThirdPerson;
+            showCombatToast(state.player.spectateThirdPerson ? 'SPECTATOR: 3RD-PERSON FOLLOW CAM' : 'SPECTATOR: 1ST-PERSON TEAMMATE POV');
+          } else {
+            state.player.ads = !state.player.ads;
+          }
+        }
         if (e.code === 'KeyG' || e.code === 'Digit4') throwGrenade('frag');
         if (e.code === 'KeyE' || e.code === 'Digit3') throwGrenade('stun');
         if ((e.code === 'KeyC' || e.code === 'ControlLeft') && state.countdownTime <= 0) {
@@ -3086,7 +3432,15 @@
       });
 
       window.addEventListener('mousemove', (e) => {
-        if (!state.roundActive || state.player.dying) return;
+        if (!state.roundActive) return;
+        if (state.player.dying) {
+          if (state.player.spectating && isPointerLocked) {
+            const sens = 0.0021 * state.mouseSensMult;
+            state.player.spectateYawOffset -= e.movementX * sens;
+            state.player.spectatePitchOffset = Math.max(-0.65, Math.min(0.85, state.player.spectatePitchOffset + e.movementY * sens));
+          }
+          return;
+        }
         const baseSens = (state.player.ads ? 0.00135 : 0.00215) * state.mouseSensMult;
         if (isPointerLocked) {
           state.player.yaw -= e.movementX * baseSens;
@@ -3309,16 +3663,35 @@
         mouseFireHeld = false;
         sfx.playKillConfirm();
         flashDamageOverlay();
-        showCombatToast('YOU WERE KILLED — FALLING...');
+        triggerGamepadRumble(0.85, 0.65, 260);
 
-        setTimeout(() => {
-          endRound(false, reasonText);
-        }, 1150);
+        const allyStillAlive = (state.mode === '2v2' && state.ally.active && state.ally.hp > 0 && !state.ally.dying);
+        if (allyStillAlive) {
+          showCombatToast('YOU WERE ELIMINATED — SPECTATING TEAMMATE [ALLY]SoapMac!');
+          setTimeout(() => {
+            if (!state.roundActive) return;
+            if (state.ally.active && state.ally.hp > 0 && !state.ally.dying) {
+              p.spectating = true;
+              p.spectateYawOffset = 0;
+              p.spectatePitchOffset = 0.15;
+              document.getElementById('spectate-banner').classList.remove('hidden');
+              document.getElementById('damage-overlay').style.opacity = '0';
+            } else {
+              endRound(false, reasonText);
+            }
+          }, 720);
+        } else {
+          showCombatToast('YOU WERE KILLED — FALLING...');
+          setTimeout(() => {
+            if (state.roundActive) endRound(false, reasonText);
+          }, 1150);
+        }
       }
 
       function triggerReload() {
         const p = state.player;
         const wpn = WEAPONS[state.weaponKey];
+        pollGamepadInput(dt);
         if (p.reloading || p.mag >= wpn.magSize || p.reserve <= 0 || !state.roundActive || p.dying) return;
         p.reloading = true;
         p.reloadTimer = wpn.reloadDuration;
@@ -3627,12 +4000,25 @@
             return;
           }
 
-          let targetEntity = p;
-          if (state.ally.active && state.ally.hp > 0 && !state.ally.dying) {
+          // Select living target on player's squad (if player is eliminated in 2v2, target [ALLY]SoapMac!)
+          const playerAlive = (!p.dying && p.hp > 0);
+          const allyAlive = (state.ally.active && state.ally.hp > 0 && !state.ally.dying);
+          let targetEntity = null;
+          if (playerAlive && allyAlive) {
             const dP = Math.hypot(p.x - e.x, p.z - e.z);
             const dA = Math.hypot(state.ally.x - e.x, state.ally.z - e.z);
-            if (dA < dP * 0.85) targetEntity = state.ally;
+            const losP = hasLineOfSight(e.x, e.footY + 1.55, e.z, p.x, (p.footY || 0) + 1.5, p.z);
+            const losA = hasLineOfSight(e.x, e.footY + 1.55, e.z, state.ally.x, (state.ally.footY || 0) + 1.5, state.ally.z);
+            if (losA && !losP) targetEntity = state.ally;
+            else if (losP && !losA) targetEntity = p;
+            else targetEntity = (dA < dP * 0.92) ? state.ally : p;
+          } else if (playerAlive) {
+            targetEntity = p;
+          } else if (allyAlive) {
+            targetEntity = state.ally;
           }
+
+          if (!targetEntity) return;
 
           const dxToT = targetEntity.x - e.x;
           const dzToT = targetEntity.z - e.z;
@@ -3643,7 +4029,7 @@
           e.yaw = Math.atan2(dxToT, dzToT);
           e.rig.root.rotation.set(0, e.yaw, 0);
 
-          // Opponents also stay locked in place during the 5-second countdown!
+          // Opponents stay locked in place during the 5-second countdown!
           if (countdownLocked) {
             e.rig.root.position.set(e.x, e.footY, e.z);
             e.rig.leftLegPivot.rotation.x = 0;
@@ -3653,7 +4039,7 @@
 
           e.aiTimer -= dt;
           if (e.aiTimer <= 0) {
-            e.aiTimer = 1.0 + Math.random() * 1.1;
+            e.aiTimer = 0.9 + Math.random() * 1.0;
             e.strafeDir = Math.random() > 0.5 ? 1 : -1;
 
             if (state.overtimeActive) {
@@ -3661,7 +4047,7 @@
               e.targetZ = 1.35 + (Math.random() - 0.5) * 1.2;
             } else if (canSeeTarget && distToT < 18) {
               e.targetX = Math.max(-9.5, Math.min(9.5, e.x + e.strafeDir * 3.4));
-              e.targetZ = Math.max(-14, Math.min(8, e.z + (distToT > 11 ? 2.2 : -1.4)));
+              e.targetZ = Math.max(-14, Math.min(12, e.z + (distToT > 10 ? 2.4 : -1.4)));
             } else {
               const wp = TACTICAL_WAYPOINTS[Math.floor(Math.random() * TACTICAL_WAYPOINTS.length)];
               e.targetX = wp.x;
@@ -3675,10 +4061,7 @@
           const tz = e.targetZ - e.z;
           const tDist = Math.hypot(tx, tz);
           if (tDist > 0.25) {
-            e.x += (tx / tDist) * moveSpeed * dt;
-            e.z += (tz / tDist) * moveSpeed * dt;
-            e.footY = getFloorElevationAt(e.x, e.z, e.footY);
-            resolveWorldCollisions(e, 0.46);
+            moveEntitySubstepped(e, (tx / tDist) * moveSpeed * dt, (tz / tDist) * moveSpeed * dt, 0.42);
             const swing = Math.sin(nowMs * 0.015 + idx) * 0.42;
             e.rig.leftLegPivot.rotation.x = swing;
             e.rig.rightLegPivot.rotation.x = -swing;
@@ -3688,7 +4071,7 @@
           }
           e.rig.root.position.set(e.x, e.footY, e.z);
 
-          if (canSeeTarget && state.roundActive && !p.dying) {
+          if (canSeeTarget && state.roundActive) {
             e.burstCooldown -= dt;
             if (e.burstCooldown <= 0) {
               e.burstRemaining = wpn.id === 'shotgun' ? 1 : (wpn.id === 'pistol' ? 2 : (state.difficulty === 'demon' ? 5 : 3));
@@ -3715,28 +4098,46 @@
                 if (targetEntity === p) {
                   p.hp = Math.max(0, p.hp - dmg);
                   flashDamageOverlay();
+                  triggerGamepadRumble(0.45, 0.35, 110);
                   updateHUD();
                   if (p.hp <= 0) {
                     triggerPlayerDeath(`ELIMINATED BY ${e.name} (${wpn.name.split(' ')[0]})`);
                   }
                 } else {
                   state.ally.hp = Math.max(0, state.ally.hp - dmg);
+                  updateHUD();
                   if (state.ally.hp <= 0 && !state.ally.dying) {
                     state.ally.dying = true;
                     state.ally.deathTimer = 0;
-                    showCombatToast('TEAMMATE [ALLY]SoapMac DOWN!');
+                    spawnKillBurstEffect(
+                      new THREE.Vector3(state.ally.x, state.ally.footY + 1.35, state.ally.z),
+                      state.ally.name
+                    );
+                    if (p.dying || p.hp <= 0) {
+                      showCombatToast('TEAMMATE [ALLY]SoapMac ELIMINATED — SQUAD WIPED!');
+                      setTimeout(() => {
+                        if (state.roundActive) {
+                          endRound(false, `BOTH SQUAD MEMBERS ELIMINATED BY ${e.name}`);
+                        }
+                      }, 1050);
+                    } else {
+                      showCombatToast('TEAMMATE [ALLY]SoapMac DOWN — YOU ARE THE LAST OPERATOR!');
+                    }
                   }
-                  updateHUD();
                 }
               }
             }
           }
         });
 
+        // --- UPGRADED TACTICAL 2v2 TEAMMATE AI ([ALLY]SoapMac) ---
         const al = state.ally;
         if (al.active) {
-          al.rig.root.visible = true;
+          // Hide ally mesh only when spectating in 1st-person POV so his helmet doesn't block the camera
+          al.rig.root.visible = !(p.spectating && !p.spectateThirdPerson && !al.dying);
+
           if (al.dying) {
+            al.rig.root.visible = true;
             al.deathTimer += dt;
             const fallProg = Math.min(1, al.deathTimer / 0.52);
             al.rig.root.rotation.x = -fallProg * (Math.PI / 2.05);
@@ -3745,10 +4146,24 @@
           }
           if (al.muzzleTimer > 0) {
             al.muzzleTimer -= dt;
-            al.rig.muzzleMat.opacity = al.muzzleTimer > 0 ? 0.9 : 0;
+            al.rig.muzzleMat.opacity = al.muzzleTimer > 0 ? 0.92 : 0;
           }
 
-          const targetEnemy = state.enemies.find(e => e.active && e.hp > 0 && !e.dying);
+          // Pick the best active enemy target (prioritize visible enemies first, then closest distance!)
+          let targetEnemy = null;
+          let bestScore = Infinity;
+          for (let i = 0; i < state.enemies.length; i++) {
+            const cand = state.enemies[i];
+            if (!cand.active || cand.hp <= 0 || cand.dying) continue;
+            const d = Math.hypot(cand.x - al.x, cand.z - al.z);
+            const los = hasLineOfSight(al.x, al.footY + 1.55, al.z, cand.x, cand.footY + 1.5, cand.z);
+            const score = d - (los ? 100 : 0);
+            if (score < bestScore) {
+              bestScore = score;
+              targetEnemy = cand;
+            }
+          }
+
           if (targetEnemy) {
             const dx = targetEnemy.x - al.x;
             const dz = targetEnemy.z - al.z;
@@ -3761,41 +4176,78 @@
             if (!countdownLocked) {
               al.aiTimer -= dt;
               if (al.aiTimer <= 0) {
-                al.aiTimer = 1.3 + Math.random();
-                al.targetX = Math.max(-9, Math.min(9, -3.2 + (Math.random() - 0.5) * 5));
-                al.targetZ = Math.max(-4, Math.min(11, 4.5 + (Math.random() - 0.5) * 6));
+                al.aiTimer = 0.75 + Math.random() * 0.65;
+                al.strafeDir = Math.random() > 0.5 ? 1 : -1;
+
+                if (state.overtimeActive) {
+                  // Aggressively push and hold the Overtime Flag!
+                  al.targetX = (Math.random() - 0.5) * 1.3;
+                  al.targetZ = 1.35 + (Math.random() - 0.5) * 1.1;
+                } else if (canSee) {
+                  // Tactical strafe-and-push while engaging enemy in line of sight
+                  al.targetX = Math.max(-9.5, Math.min(9.5, al.x + al.strafeDir * 3.8));
+                  al.targetZ = Math.max(-13.5, Math.min(12.0, al.z + (dist > 9.5 ? -2.8 : (dist < 4.2 ? 1.8 : -0.8))));
+                } else {
+                  // Actively flank & hunt down the enemy across the arena!
+                  if (Math.random() < 0.65) {
+                    al.targetX = Math.max(-9.5, Math.min(9.5, targetEnemy.x + (Math.random() - 0.5) * 4.5));
+                    al.targetZ = Math.max(-13.5, Math.min(12.0, targetEnemy.z + (Math.random() - 0.5) * 4.5));
+                  } else {
+                    const wp = TACTICAL_WAYPOINTS[Math.floor(Math.random() * TACTICAL_WAYPOINTS.length)];
+                    al.targetX = wp.x;
+                    al.targetZ = wp.z;
+                  }
+                }
               }
+
               const tx = al.targetX - al.x;
               const tz = al.targetZ - al.z;
               const tDist = Math.hypot(tx, tz);
-              if (tDist > 0.3) {
-                al.x += (tx / tDist) * 4.1 * dt;
-                al.z += (tz / tDist) * 4.1 * dt;
-                al.footY = getFloorElevationAt(al.x, al.z, al.footY);
-                resolveWorldCollisions(al, 0.46);
-                const swing = Math.sin(nowMs * 0.014) * 0.38;
+              const allySpeed = 4.95;
+              if (tDist > 0.25) {
+                moveEntitySubstepped(al, (tx / tDist) * allySpeed * dt, (tz / tDist) * allySpeed * dt, 0.40);
+                al.bobPhase = (al.bobPhase || 0) + dt * 11.5;
+                const swing = Math.sin(nowMs * 0.016) * 0.44;
                 al.rig.leftLegPivot.rotation.x = swing;
                 al.rig.rightLegPivot.rotation.x = -swing;
               } else {
+                al.bobPhase = (al.bobPhase || 0) + dt * 2.0;
                 al.rig.leftLegPivot.rotation.x = 0;
                 al.rig.rightLegPivot.rotation.x = 0;
               }
               al.rig.root.position.set(al.x, al.footY, al.z);
 
-              if (canSee) {
+              // Multi-round tactical burst firing (matches/exceeds veteran operator lethality!)
+              if (canSee && state.roundActive) {
                 al.burstCooldown -= dt;
                 if (al.burstCooldown <= 0) {
-                  al.burstCooldown = 0.95 + Math.random() * 0.4;
+                  al.burstRemaining = wpn.id === 'shotgun' ? 1 : (wpn.id === 'pistol' ? 3 : 5);
+                  al.burstCooldown = (wpn.id === 'shotgun' ? 0.78 : 0.56) + Math.random() * 0.24;
+                }
+                if (al.burstRemaining > 0 && Math.random() < 0.45) {
+                  al.burstRemaining--;
                   al.muzzleTimer = 0.06;
-                  sfx.playGunshot(wpn.id, dist);
-                  const hit = Math.random() < 0.32;
+                  sfx.playGunshot(wpn.id, p.spectating ? 0 : dist);
+
+                  const hit = Math.random() < 0.46;
+                  const isHead = hit && (Math.random() < 0.22);
                   spawnBulletTracer(
                     new THREE.Vector3(al.x, al.footY + 1.38, al.z),
-                    new THREE.Vector3(targetEnemy.x, targetEnemy.footY + 1.35, targetEnemy.z),
+                    new THREE.Vector3(
+                      targetEnemy.x + (hit ? 0 : (Math.random() - 0.5) * 0.9),
+                      targetEnemy.footY + (isHead ? 1.70 : 1.32),
+                      targetEnemy.z + (hit ? 0 : (Math.random() - 0.5) * 0.9)
+                    ),
                     0x38bdf8
                   );
                   if (hit) {
-                    targetEnemy.hp = Math.max(0, targetEnemy.hp - wpn.damage);
+                    const dmg = Math.round(wpn.damage * (isHead ? wpn.headMultiplier : 0.92));
+                    targetEnemy.hp = Math.max(0, targetEnemy.hp - dmg);
+                    targetEnemy.flinchTimer = 0.14;
+                    if (p.spectating) {
+                      sfx.playHitmarker(isHead);
+                      triggerHitmarkerUI(isHead);
+                    }
                     if (targetEnemy.hp <= 0) {
                       triggerOperatorDeath(targetEnemy);
                     }
@@ -3849,6 +4301,8 @@
         document.getElementById('stat-acc').textContent = `${acc}%`;
         document.getElementById('stat-streak').textContent = state.winStreak;
 
+        document.getElementById('spectate-banner').classList.add('hidden');
+        if (state.ally.active) state.ally.rig.root.visible = true;
         modal.classList.remove('hidden');
         updateHUD();
       }
@@ -3960,9 +4414,10 @@
           mmCtx.fill();
         }
 
-        const px = toMMX(state.player.x);
-        const py = toMMY(state.player.z);
-        const headingAngle = -state.player.yaw - Math.PI / 2;
+        const specAct = (state.player.spectating && state.ally.active && state.ally.hp > 0 && !state.ally.dying);
+        const px = toMMX(specAct ? state.ally.x : state.player.x);
+        const py = toMMY(specAct ? state.ally.z : state.player.z);
+        const headingAngle = (specAct ? -(state.ally.yaw + Math.PI) : -state.player.yaw) - Math.PI / 2;
 
         mmCtx.save();
         mmCtx.translate(px, py);
@@ -4058,25 +4513,27 @@
               }
             }
 
-            // Center Overtime Flag Capture + Decline When Leaving
+            // Center Overtime Flag Capture + Decline When Leaving (Both Player and Teammate [ALLY]SoapMac can capture!)
             const pFlagDist = Math.hypot(p.x - 0, p.z - 1.35);
             const pOnFlag = !p.dying && pFlagDist < 2.55 && p.footY < 1.2;
+            const alOnFlag = state.ally.active && state.ally.hp > 0 && !state.ally.dying && state.ally.footY < 1.2 && Math.hypot(state.ally.x - 0, state.ally.z - 1.35) < 2.55;
+            const teamOnFlag = pOnFlag || alOnFlag;
             const eOnFlag = state.enemies.some(e => e.active && e.hp > 0 && !e.dying && e.footY < 1.2 && Math.hypot(e.x - 0, e.z - 1.35) < 2.55);
 
             const flagBox = document.getElementById('flag-capture-box');
             const flagBar = document.getElementById('flag-capture-bar');
             const flagLbl = document.getElementById('flag-capture-label');
 
-            if (pOnFlag || eOnFlag) {
+            if (teamOnFlag || eOnFlag) {
               flagBox.classList.remove('hidden');
-              if (pOnFlag && !eOnFlag) {
+              if (teamOnFlag && !eOnFlag) {
                 state.flagProgress = Math.min(100, state.flagProgress + dt * 34);
-                flagLbl.textContent = 'CAPTURING GULAG FLAG...';
+                flagLbl.textContent = pOnFlag ? 'CAPTURING GULAG FLAG...' : '[ALLY]SoapMac CAPTURING FLAG...';
                 flagBar.style.width = `${Math.abs(state.flagProgress)}%`;
                 if (state.flagProgress >= 100) {
-                  endRound(true, 'CAPTURED THE BACKROOMS GULAG FLAG!');
+                  endRound(true, pOnFlag ? 'CAPTURED THE BACKROOMS GULAG FLAG!' : 'TEAMMATE [ALLY]SoapMac CAPTURED THE GULAG FLAG!');
                 }
-              } else if (eOnFlag && !pOnFlag) {
+              } else if (eOnFlag && !teamOnFlag) {
                 state.flagProgress = Math.max(-100, state.flagProgress - dt * 30);
                 flagLbl.textContent = 'ENEMY CAPTURING FLAG!';
                 flagBar.style.width = `${Math.abs(state.flagProgress)}%`;
@@ -4103,20 +4560,67 @@
           updateHUD();
         }
 
-        // 2. Player Falling/Dying Sequence OR Tactical FPS Responsive Movement & Aiming
+        // 2. Player Falling/Dying Sequence, Live Teammate Spectator Cam, OR Tactical FPS Movement & Aiming
         if (p.dying) {
           p.deathTimer += dt;
-          const fallT = Math.min(1, p.deathTimer / 0.65);
-          const eyeDrop = p.footY + THREE.MathUtils.lerp(1.68, 0.26, fallT);
-          camera.position.set(p.x, eyeDrop, p.z);
-          camera.rotation.order = 'YXZ';
-          camera.rotation.y = p.yaw;
-          camera.rotation.x = THREE.MathUtils.lerp(p.pitch, 0.35, fallT);
-          camera.rotation.z = THREE.MathUtils.lerp(0, 0.72, fallT);
-          weaponRig.position.y = THREE.MathUtils.lerp(HIP_POS.y, -0.45, fallT);
-          weaponRig.rotation.z = THREE.MathUtils.lerp(0, 0.85, fallT);
           document.getElementById('mantle-prompt').classList.add('hidden');
+
+          if (p.spectating && state.ally.active && state.ally.hp > 0 && !state.ally.dying) {
+            const al = state.ally;
+            const specHpEl = document.getElementById('spectate-hp-badge');
+            if (specHpEl) specHpEl.textContent = `${Math.max(0, Math.round(al.hp))} HP`;
+
+            // Convert ally's +Z-based yaw into camera's -Z-based yaw
+            const allyCamYaw = al.yaw + Math.PI;
+            const bobPhase = al.bobPhase || 0;
+
+            if (!p.spectateThirdPerson) {
+              // 1ST-PERSON TEAMMATE SPECTATOR POV (Through [ALLY]SoapMac's eyes with live weapon viewmodel!)
+              weaponRig.visible = true;
+              const bobY = Math.sin(bobPhase * 2) * 0.018;
+              const bobX = Math.cos(bobPhase) * 0.012;
+              const specCamX = Math.max(-10.82, Math.min(10.82, al.x + bobX));
+              const specCamZ = Math.max(-16.82, Math.min(16.82, al.z));
+              camera.position.set(specCamX, al.footY + 1.66 + bobY, specCamZ);
+              camera.rotation.order = 'YXZ';
+              camera.rotation.y += (allyCamYaw - camera.rotation.y) * Math.min(1, dt * 16);
+              camera.rotation.x = THREE.MathUtils.lerp(camera.rotation.x, -0.02 + (al.muzzleTimer > 0 ? 0.025 : 0), Math.min(1, dt * 16));
+              camera.rotation.z = 0;
+
+              const kickZ = al.muzzleTimer > 0 ? 0.032 : 0;
+              muzzleFlashMat.opacity = al.muzzleTimer > 0 ? 0.92 : 0;
+              weaponRig.position.set(
+                HIP_POS.x + Math.cos(bobPhase) * 0.008,
+                HIP_POS.y - Math.abs(Math.sin(bobPhase)) * 0.010,
+                HIP_POS.z + kickZ
+              );
+              weaponRig.rotation.set(HIP_ROT.x + (al.muzzleTimer > 0 ? 0.04 : 0), HIP_ROT.y, HIP_ROT.z);
+            } else {
+              // 3RD-PERSON ORBIT FOLLOW SPECTATOR CAM
+              weaponRig.visible = false;
+              const orbitYaw = allyCamYaw + p.spectateYawOffset;
+              const orbitDist = 2.65;
+              const rawCamX = al.x + Math.sin(orbitYaw) * orbitDist;
+              const rawCamZ = al.z + Math.cos(orbitYaw) * orbitDist;
+              const clampedX = Math.max(-10.65, Math.min(10.65, rawCamX));
+              const clampedZ = Math.max(-16.65, Math.min(16.65, rawCamZ));
+              camera.position.set(clampedX, al.footY + 2.05 + p.spectatePitchOffset * 1.2, clampedZ);
+              camera.lookAt(al.x, al.footY + 1.45, al.z);
+            }
+          } else {
+            weaponRig.visible = true;
+            const fallT = Math.min(1, p.deathTimer / 0.65);
+            const eyeDrop = p.footY + THREE.MathUtils.lerp(1.68, 0.26, fallT);
+            camera.position.set(p.x, eyeDrop, p.z);
+            camera.rotation.order = 'YXZ';
+            camera.rotation.y = p.yaw;
+            camera.rotation.x = THREE.MathUtils.lerp(p.pitch, 0.35, fallT);
+            camera.rotation.z = THREE.MathUtils.lerp(0, 0.72, fallT);
+            weaponRig.position.y = THREE.MathUtils.lerp(HIP_POS.y, -0.45, fallT);
+            weaponRig.rotation.z = THREE.MathUtils.lerp(0, 0.85, fallT);
+          }
         } else if (state.roundActive) {
+          weaponRig.visible = true;
           if (p.fireCooldown > 0) p.fireCooldown -= dt;
           if (mouseFireHeld && wpn.auto && p.fireCooldown <= 0 && state.countdownTime <= 0) {
             attemptPlayerFire();
@@ -4140,14 +4644,17 @@
           if (keys['ArrowUp']) p.pitch = Math.min(1.4, p.pitch + 1.5 * dt);
           if (keys['ArrowDown']) p.pitch = Math.max(-1.4, p.pitch - 1.5 * dt);
 
-          const targetLean = (state.countdownTime <= 0 && keys['KeyQ']) ? 0.14 : 0;
+          const targetLean = (state.countdownTime <= 0 && (keys['KeyQ'] || gamepadState.leanHeld)) ? 0.14 : 0;
           p.lean += (targetLean - p.lean) * Math.min(1, dt * 14);
 
           // Movement is strictly disabled while state.countdownTime > 0!
+          // Supports both Keyboard WASD and smooth 360° Switch Pro Controller Left Stick!
           const canMoveNow = (state.countdownTime <= 0);
-          let moveForward = canMoveNow ? ((keys['KeyW'] ? 1 : 0) - (keys['KeyS'] ? 1 : 0)) : 0;
-          let moveStrafe = canMoveNow ? ((keys['KeyD'] ? 1 : 0) - (keys['KeyA'] ? 1 : 0)) : 0;
-          const isMoving = (moveForward !== 0 || moveStrafe !== 0);
+          const kbForward = (keys['KeyW'] ? 1 : 0) - (keys['KeyS'] ? 1 : 0);
+          const kbStrafe = (keys['KeyD'] ? 1 : 0) - (keys['KeyA'] ? 1 : 0);
+          let moveForward = canMoveNow ? (Math.abs(gamepadState.moveY) > Math.abs(kbForward) ? gamepadState.moveY : kbForward) : 0;
+          let moveStrafe = canMoveNow ? (Math.abs(gamepadState.moveX) > Math.abs(kbStrafe) ? gamepadState.moveX : kbStrafe) : 0;
+          const isMoving = (Math.hypot(moveForward, moveStrafe) > 0.04);
 
           const mantleCand = findMantleCandidate(p);
           document.getElementById('mantle-prompt').classList.toggle('hidden', !mantleCand);
@@ -4166,7 +4673,8 @@
               resolveWorldCollisions(p, 0.36);
             }
           } else {
-            p.sprinting = Boolean(canMoveNow && keys['ShiftLeft'] && moveForward > 0 && !p.ads && !p.crouching && !p.reloading);
+            const wantSprint = keys['ShiftLeft'] || gamepadState.sprintLock || (gamepadState.moveY > 0.82);
+            p.sprinting = Boolean(canMoveNow && wantSprint && moveForward > 0.25 && !p.ads && !p.crouching && !p.reloading);
 
             if (p.sliding) {
               p.slideTimer -= dt;
@@ -4187,8 +4695,9 @@
             let wishVZ = 0;
             if (isMoving) {
               const len = Math.hypot(moveForward, moveStrafe);
-              moveForward /= len;
-              moveStrafe /= len;
+              const analogMag = Math.min(1.0, len);
+              moveForward = (moveForward / len) * analogMag;
+              moveStrafe = (moveStrafe / len) * analogMag;
               const sinY = Math.sin(p.yaw);
               const cosY = Math.cos(p.yaw);
               wishVX = (-sinY * moveForward + cosY * moveStrafe) * maxSpeed;
