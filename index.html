@@ -1601,11 +1601,67 @@
           scene.add(stepMesh);
         }
 
-        // Build 3D Tubular Steel Handrails, Mid-Rails & Vertical Baluster Posts on staircase edges
-        const railSides = [
-          xCenter > 0 ? xCenter - width / 2 + 0.07 : xCenter + width / 2 - 0.07,
-          xCenter > 0 ? xCenter + width / 2 - 0.07 : xCenter - width / 2 + 0.07
-        ];
+        // 1. Solid vertical back wall at the high end (zEnd) of the stairs
+        // Closes off the 3.1m high vertical face under the top of the stairs so players cannot walk through the back of the stairs!
+        const backWallH = UPPER_Y;
+        const backWallZ = zEnd > zStart ? zEnd - 0.12 : zEnd + 0.12;
+        addBoxWall(xCenter, 0, backWallZ, width, backWallH, 0.28, matWallCover, true, 'wall', false);
+
+        // 2. Solid side skirt walls & colliders on BOTH sides (inner and outer)
+        const innerSideX = xCenter > 0 ? xCenter - width / 2 - 0.08 : xCenter + width / 2 + 0.08;
+        const outerSideX = xCenter > 0 ? xCenter + width / 2 + 0.08 : xCenter - width / 2 - 0.08;
+        const minZ = Math.min(zStart, zEnd);
+        const maxZ = Math.max(zStart, zEnd);
+        const stairLen = maxZ - minZ;
+
+        // Inner side solid collider
+        wallColliders.push({
+          minX: innerSideX - 0.18,
+          maxX: innerSideX + 0.18,
+          minZ: minZ - 0.1,
+          maxZ: maxZ + 0.1,
+          minY: 0,
+          maxY: UPPER_Y + 0.85,
+          mapType: 'wall',
+          mantleable: false,
+          mesh: null
+        });
+
+        // Outer side solid collider (between staircase and outer wall)
+        wallColliders.push({
+          minX: outerSideX - 0.18,
+          maxX: outerSideX + 0.18,
+          minZ: minZ - 0.1,
+          maxZ: maxZ + 0.1,
+          minY: 0,
+          maxY: UPPER_Y + 0.85,
+          mapType: 'wall',
+          mantleable: false,
+          mesh: null
+        });
+
+        // 3. Solid under-stair block colliders (prevents walking through the sloped volume under the stairs from any direction)
+        const blockSteps = 4;
+        const subZ = stairLen / blockSteps;
+        for (let b = 0; b < blockSteps; b++) {
+          const frac = (b + 0.5) / blockSteps;
+          const bZ = zStart + frac * (zEnd - zStart);
+          const bH = ((b + 1) / blockSteps) * (UPPER_Y - 0.15);
+          wallColliders.push({
+            minX: xCenter - width / 2 + 0.05,
+            maxX: xCenter + width / 2 - 0.05,
+            minZ: bZ - subZ / 2,
+            maxZ: bZ + subZ / 2,
+            minY: 0,
+            maxY: bH,
+            mapType: 'wall',
+            mantleable: false,
+            mesh: null
+          });
+        }
+
+        // 4. Build 3D Tubular Steel Handrails, Mid-Rails & Vertical Baluster Posts on staircase edges
+        const railSides = [innerSideX, outerSideX];
         const runZ = zEnd - zStart;
         const riseY = UPPER_Y;
         const railLength = Math.hypot(runZ, riseY);
@@ -1648,8 +1704,6 @@
           }
         });
 
-        const minZ = Math.min(zStart, zEnd);
-        const maxZ = Math.max(zStart, zEnd);
         walkableSurfaces.push({
           minX: xCenter - width / 2 - 0.15,
           maxX: xCenter + width / 2 + 0.15,
@@ -1661,25 +1715,23 @@
           },
           mapType: 'stairs'
         });
-        // Solid side stringer collider on inner side of staircase so players cannot walk through the side of stairs
-        const innerSideX = xCenter > 0 ? xCenter - width / 2 - 0.08 : xCenter + width / 2 + 0.08;
-        wallColliders.push({
-          minX: innerSideX - 0.14,
-          maxX: innerSideX + 0.14,
-          minZ: minZ + 0.35,
-          maxZ: maxZ - 0.35,
-          minY: 0,
-          maxY: UPPER_Y + 0.75,
-          mapType: 'railing',
-          mantleable: true,
-          mesh: null
-        });
       }
-
       addWalkableStaircase(-8.8, 12.2, 5.6, 2.5);
       addWalkableStaircase(8.8, 12.2, 5.6, 2.5);
       addWalkableStaircase(-8.8, -12.2, -5.6, 2.5);
       addWalkableStaircase(8.8, -12.2, -5.6, 2.5);
+
+      // Solid end-cap railings on upper catwalk flanks beside the staircases (prevents walking off or through catwalk edges)
+      // West Catwalk (+Z and -Z ends)
+      addBoxWall(-10.55, UPPER_Y, 5.6, 0.95, 1.05, 0.25, matWallCover, true, 'railing', false);
+      addBoxWall(-7.10, UPPER_Y, 5.6, 0.95, 1.05, 0.25, matWallCover, true, 'railing', false);
+      addBoxWall(-10.55, UPPER_Y, -5.6, 0.95, 1.05, 0.25, matWallCover, true, 'railing', false);
+      addBoxWall(-7.10, UPPER_Y, -5.6, 0.95, 1.05, 0.25, matWallCover, true, 'railing', false);
+      // East Catwalk (+Z and -Z ends)
+      addBoxWall(10.55, UPPER_Y, 5.6, 0.95, 1.05, 0.25, matWallCover, true, 'railing', false);
+      addBoxWall(7.10, UPPER_Y, 5.6, 0.95, 1.05, 0.25, matWallCover, true, 'railing', false);
+      addBoxWall(10.55, UPPER_Y, -5.6, 0.95, 1.05, 0.25, matWallCover, true, 'railing', false);
+      addBoxWall(7.10, UPPER_Y, -5.6, 0.95, 1.05, 0.25, matWallCover, true, 'railing', false);
 
       // Overtime Flag
       const flagGroup = new THREE.Group();
@@ -3443,16 +3495,23 @@
 
       function resolveWorldCollisions(entity, radius = 0.48) {
         const footY = entity.footY || 0;
-        // 3 iterative depenetration passes so corner wedges & pillars never allow clipping
+        // True physical room interior: arena wall center 11.5 / 17.5, wall thickness 0.8 -> inner face is 11.1 / 17.1
+        // Center of entity must not exceed (innerFace - radius)
+        const maxBoundX = (ARENA_HALF_W - 0.4) - radius; // 10.62m
+        const maxBoundZ = (ARENA_HALF_L - 0.4) - radius; // 16.62m
+
+        // 3 iterative depenetration passes so corner wedges, staircase walls & pillars never allow clipping
         for (let pass = 0; pass < 3; pass++) {
-          entity.x = Math.max(-ARENA_HALF_W + 0.68, Math.min(ARENA_HALF_W - 0.68, entity.x));
-          entity.z = Math.max(-ARENA_HALF_L + 0.68, Math.min(ARENA_HALF_L - 0.68, entity.z));
+          entity.x = Math.max(-maxBoundX, Math.min(maxBoundX, entity.x));
+          entity.z = Math.max(-maxBoundZ, Math.min(maxBoundZ, entity.z));
 
           for (let i = 0; i < wallColliders.length; i++) {
             const b = wallColliders[i];
+            // Outer perimeter walls are already enforced by boundary clamping above
             if (b.mapType === 'outer') continue;
-            if (footY >= b.maxY - 0.12) continue;
-            if (footY + 1.65 <= (b.minY || 0)) continue;
+            // Height vertical overlap check
+            if (footY >= b.maxY - 0.08) continue;
+            if (footY + 1.68 <= (b.minY || 0)) continue;
 
             const closestX = Math.max(b.minX, Math.min(entity.x, b.maxX));
             const closestZ = Math.max(b.minZ, Math.min(entity.z, b.maxZ));
@@ -3480,6 +3539,9 @@
               }
             }
           }
+          // Re-enforce arena perimeter after obstacle resolution
+          entity.x = Math.max(-maxBoundX, Math.min(maxBoundX, entity.x));
+          entity.z = Math.max(-maxBoundZ, Math.min(maxBoundZ, entity.z));
         }
       }
 
@@ -4096,10 +4158,12 @@
             p.footY = THREE.MathUtils.lerp(p.mantleStartY, p.mantleTargetY, prog);
             p.x = THREE.MathUtils.lerp(p.x, p.mantleTargetX, dt * 12);
             p.z = THREE.MathUtils.lerp(p.z, p.mantleTargetZ, dt * 12);
+            resolveWorldCollisions(p, 0.48);
             if (p.mantleTimer <= 0) {
               p.mantling = false;
               p.footY = p.mantleTargetY;
               p.grounded = true;
+              resolveWorldCollisions(p, 0.48);
             }
           } else {
             p.sprinting = Boolean(canMoveNow && keys['ShiftLeft'] && moveForward > 0 && !p.ads && !p.crouching && !p.reloading);
@@ -4189,7 +4253,9 @@
           const headBobX = isMoving ? Math.cos(p.bobPhase) * (p.ads ? 0.005 : 0.016) : 0;
           const mantleDip = p.mantling ? Math.sin((1 - p.mantleTimer / 0.34) * Math.PI) * 0.14 : 0;
 
-          camera.position.set(p.x + headBobX - Math.sin(p.lean) * 0.35, p.y + headBobY - mantleDip, p.z);
+          const camX = Math.max(-10.82, Math.min(10.82, p.x + headBobX - Math.sin(p.lean) * 0.28));
+          const camZ = Math.max(-16.82, Math.min(16.82, p.z));
+          camera.position.set(camX, p.y + headBobY - mantleDip, camZ);
           camera.rotation.order = 'YXZ';
           camera.rotation.y = p.yaw + p.recoilYawAccum;
           camera.rotation.x = p.pitch + p.recoilPitchAccum - mantleDip * 0.6;
