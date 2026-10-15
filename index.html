@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Call of Duty: Warzone — Backrooms Gulag (1v1 & 2v2 Online)</title>
+  <title>BACK DOOR — Backrooms Gulag (1v1 & 2v2 Online)</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
@@ -49,7 +49,7 @@
       display: block;
       z-index: 1;
     }
-    /* Next-Gen Call of Duty Cinematic Color Grading & Lens Vignette */
+    /* Next-Gen Tactical FPS Cinematic Color Grading & Lens Vignette */
     .vignette-layer {
       position: absolute;
       inset: 0;
@@ -133,6 +133,34 @@
       opacity: 0.52;
       cursor: not-allowed !important;
     }
+    
+    html, body, #game-container {
+      touch-action: none;
+      -webkit-touch-callout: none;
+      overscroll-behavior: none;
+      height: 100dvh;
+    }
+    .codm-btn {
+      background: rgba(18, 19, 14, 0.62);
+      border: 1.5px solid rgba(235, 212, 115, 0.48);
+      color: #f8fafc;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.65), inset 0 0 8px rgba(255,230,128,0.12);
+      backdrop-filter: blur(2px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-radius: 9999px;
+      font-family: 'Oswald', sans-serif;
+      text-transform: uppercase;
+      transition: transform 0.06s ease, background 0.08s ease;
+    }
+    .codm-btn:active, .codm-btn.active-touch {
+      transform: scale(0.92);
+      background: rgba(234, 179, 8, 0.42);
+      border-color: rgba(250, 204, 21, 0.9);
+    }
+
     ::-webkit-scrollbar {
       display: none;
     }
@@ -148,38 +176,48 @@
     <div id="damage-overlay"></div>
     <div id="stun-overlay"></div>
 
-    <!-- COMPACT CALL OF DUTY WARZONE GULAG HUD -->
+    <!-- COMPACT BACK DOOR GULAG HUD -->
     <div id="hud-layer">
 
-      <!-- 1. TOP-LEFT: ULTRA-COMPACT ONLINE MODE & SHARED LOADOUT TOOLBAR -->
-      <div class="interactive-hud absolute top-2.5 left-3 flex flex-wrap items-center gap-1 max-w-[44vw]">
-        <select id="mode-select" aria-label="Select Game Mode" class="bg-black/70 hover:bg-black/90 text-emerald-300 border border-emerald-400/35 rounded px-1.5 py-0.5 text-[9px] font-mono-cod cursor-pointer focus:outline-none">
-          <option value="1v1" selected>1v1 ONLINE</option>
-          <option value="2v2">2v2 ONLINE</option>
-        </select>
-        <div class="relative flex items-center">
-          <select id="loadout-select" aria-label="Select Gulag Loadout" title="Shared loadout for all players (Only changeable during pre-round countdown)" class="bg-black/70 hover:bg-black/90 text-amber-200 border border-amber-400/35 rounded px-1.5 py-0.5 text-[9px] font-mono-cod cursor-pointer focus:outline-none">
-            <option value="mp5" selected>MP5 SMG</option>
-            <option value="ak47">AK-47</option>
-            <option value="shotgun">M680 SHOTGUN</option>
-            <option value="pistol">M19 PISTOL</option>
+      <!-- 1. TOP-LEFT: 2-ROW COMPACT TOOLBAR (ROW 2 UNDER GUN SELECTION TAB TO NEVER OVERLAP HEALTH BAR) -->
+      <div class="interactive-hud absolute top-2.5 left-3 flex flex-col items-start gap-1 z-20">
+        <!-- Row 1: Mode & Gun Selection Tab (Narrow, never overlaps center health bars) -->
+        <div class="flex items-center gap-1">
+          <select id="mode-select" aria-label="Select Game Mode" class="bg-black/75 hover:bg-black/90 text-emerald-300 border border-emerald-400/35 rounded px-1.5 py-0.5 text-[9px] font-mono-cod cursor-pointer focus:outline-none">
+            <option value="1v1" selected>1v1 ONLINE</option>
+            <option value="2v2">2v2 ONLINE</option>
           </select>
-          <span id="loadout-lock-badge" class="hidden ml-1 px-1 py-0.5 bg-red-900/75 border border-red-400/40 text-[8px] font-mono-cod text-red-200 rounded-xs">LOCKED</span>
+          <div class="relative flex items-center">
+            <select id="loadout-select" aria-label="Select Gulag Loadout" title="Shared loadout for all players (Only changeable during pre-round countdown)" class="bg-black/75 hover:bg-black/90 text-amber-200 border border-amber-400/35 rounded px-1.5 py-0.5 text-[9px] font-mono-cod cursor-pointer focus:outline-none">
+              <option value="mp5" selected>MP5 SMG</option>
+              <option value="ak47">AK-47</option>
+              <option value="shotgun">M680 SHOTGUN</option>
+              <option value="pistol">M19 PISTOL</option>
+            </select>
+            <span id="loadout-lock-badge" class="hidden ml-1 px-1 py-0.5 bg-red-900/75 border border-red-400/40 text-[8px] font-mono-cod text-red-200 rounded-xs">LOCKED</span>
+          </div>
         </div>
-        <select id="difficulty-select" aria-label="Select Opponent Skill" class="bg-black/70 hover:bg-black/90 text-neutral-200 border border-white/20 rounded px-1.5 py-0.5 text-[9px] font-mono-cod cursor-pointer focus:outline-none">
-          <option value="regular">REGULAR</option>
-          <option value="veteran" selected>VETERAN</option>
-          <option value="demon">DEMON</option>
-        </select>
-        <button id="btn-online-lobby" type="button" class="bg-emerald-500/20 hover:bg-emerald-500/35 text-emerald-300 border border-emerald-400/40 rounded px-1.5 py-0.5 text-[9px] font-mono-cod cursor-pointer">
-          LOBBY / ROOM
-        </button>
-        <button id="btn-audio-toggle" type="button" class="bg-black/70 hover:bg-neutral-800 text-neutral-300 border border-white/20 rounded px-1.5 py-0.5 text-[9px] font-mono-cod cursor-pointer">
-          SFX: ON
-        </button>
-        <button id="btn-new-round" type="button" class="bg-amber-500/85 hover:bg-amber-400 text-black font-semibold rounded px-1.5 py-0.5 text-[9px] font-mono-cod cursor-pointer">
-          NEW 1v1
-        </button>
+
+        <!-- Row 2: Placed directly under the gun selection tab as requested! -->
+        <div class="flex items-center gap-1">
+          <button id="btn-online-lobby" type="button" title="Open Game Setup & Room Lobby" class="bg-emerald-500/25 hover:bg-emerald-500/40 text-emerald-300 border border-emerald-400/45 rounded px-1.5 py-0.5 text-[9px] font-mono-cod cursor-pointer shadow">
+            LOBBY / ROOM
+          </button>
+          <button id="btn-leave-match" type="button" title="Leave match and return to Game Setup page (ESC)" class="bg-red-500/20 hover:bg-red-500/40 text-red-300 border border-red-400/45 rounded px-1.5 py-0.5 text-[9px] font-mono-cod cursor-pointer shadow">
+            LEAVE MATCH
+          </button>
+          <select id="difficulty-select" aria-label="Select Opponent Skill" class="bg-black/75 hover:bg-black/90 text-neutral-300 border border-white/20 rounded px-1.5 py-0.5 text-[9px] font-mono-cod cursor-pointer focus:outline-none">
+            <option value="regular">REGULAR</option>
+            <option value="veteran" selected>VETERAN</option>
+            <option value="demon">DEMON</option>
+          </select>
+          <button id="btn-audio-toggle" type="button" class="bg-black/75 hover:bg-neutral-800 text-neutral-300 border border-white/20 rounded px-1.5 py-0.5 text-[9px] font-mono-cod cursor-pointer">
+            SFX: ON
+          </button>
+          <button id="btn-new-round" type="button" class="bg-amber-500/85 hover:bg-amber-400 text-black font-semibold rounded px-1.5 py-0.5 text-[9px] font-mono-cod cursor-pointer">
+            NEW 1v1
+          </button>
+        </div>
       </div>
 
       <!-- 2. TOP-CENTER: COMPACT 1v1 / 2v2 SCOREBOARD & 2-MINUTE TIMER -->
@@ -264,7 +302,7 @@
         <div class="flex items-center justify-between px-1.5 py-0.5 bg-black/85 border-t border-yellow-500/20 text-[7px] font-mono-cod text-neutral-300">
           <span id="minimap-zone-label" class="text-yellow-300/90 truncate">1F LANE 2</span>
           <span class="flex items-center gap-1">
-            <span>💀<b id="hud-kills">1</b></span>
+            <span class="inline-flex items-center gap-0.5"><svg class="w-2.5 h-2.5 text-neutral-200 inline" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C7.03 2 3 6.03 3 11c0 3.1 1.56 5.83 3.95 7.47L7 22h10l.05-3.53C19.44 16.83 21 14.1 21 11c0-4.97-4.03-9-9-9zm-3 10a2 2 0 110-4 2 2 0 010 4zm6 0a2 2 0 110-4 2 2 0 010 4z"/></svg><b id="hud-kills">1</b></span>
             <span class="hidden" id="hud-squads">2</span>
             <span class="hidden" id="hud-players">2</span>
           </span>
@@ -296,7 +334,7 @@
 
       <!-- Kill Feed / Elimination Splash Effect -->
       <div id="kill-effect-banner" class="opacity-0 transition-all duration-200 pointer-events-none absolute top-[68%] left-1/2 -translate-x-1/2 flex items-center gap-2 bg-red-950/85 border border-red-500/60 px-3 py-1 rounded-xs shadow-lg">
-        <span class="text-sm">💀</span>
+        <svg class="w-4 h-4 text-red-400 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C7.03 2 3 6.03 3 11c0 3.1 1.56 5.83 3.95 7.47L7 22h10l.05-3.53C19.44 16.83 21 14.1 21 11c0-4.97-4.03-9-9-9zm-3 10a2 2 0 110-4 2 2 0 010 4zm6 0a2 2 0 110-4 2 2 0 010 4z"/></svg>
         <span id="kill-effect-text" class="font-cod text-xs tracking-wider uppercase text-red-200 font-bold">ELIMINATED OPPONENT +100 XP</span>
       </div>
 
@@ -314,6 +352,14 @@
           </div>
         </div>
 
+        <!-- Opponent Disconnect Notification Banner -->
+        <div id="disconnect-banner" class="opacity-0 transition-all duration-200 mb-1.5 pointer-events-none flex items-center gap-1.5 bg-amber-950/90 border border-amber-400/80 px-3 py-1 rounded-xs shadow-xl text-center">
+          <span class="text-xs">⚠️</span>
+          <span id="disconnect-banner-text" class="font-mono-cod text-[10px] text-amber-200 uppercase font-bold tracking-wider">
+            OPPONENT DISCONNECTED FROM MATCH
+          </span>
+        </div>
+
         <div id="combat-toast" class="opacity-0 transition-opacity duration-200 font-cod text-xs tracking-wider uppercase px-2.5 py-0.5 bg-black/65 text-amber-300 border-l-2 border-amber-400 cod-text-shadow">
           GULAG LIVE — 2:00 MATCH
         </div>
@@ -327,8 +373,8 @@
         </button>
       </div>
 
-      <!-- 6. BOTTOM-RIGHT: COMPACT WEAPON SILHOUETTE, AMMO & EQUIPMENT -->
-      <div class="absolute bottom-2.5 right-3.5 flex items-end gap-2.5 select-none">
+      <!-- 6. WEAPON SILHOUETTE, AMMO & EQUIPMENT (BOTTOM-RIGHT ON PC, LOWER-MIDDLE ON MOBILE) -->
+      <div id="weapon-hud-container" class="absolute bottom-2.5 right-3.5 flex items-end gap-2.5 select-none transition-all duration-150">
         <div class="flex flex-col items-end bg-black/45 px-2.5 py-1.5 rounded-xs border border-white/10">
           <div class="flex items-center gap-2">
             <div class="flex flex-col items-end">
@@ -351,60 +397,237 @@
         </div>
       </div>
 
-      <!-- 7. ONLINE MULTIPLAYER LOBBY, SENSITIVITY & WEBRTC ROOM SYNC MODAL -->
-      <div id="online-modal" class="interactive-hud hidden absolute inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center z-30">
-        <div class="w-[92%] max-w-md bg-[#12120d]/95 border border-emerald-400/50 p-5 rounded-sm shadow-2xl">
-          <div class="flex items-center justify-between border-b border-white/10 pb-2.5 mb-4">
+      <!-- 7. PRE-TITLE SMOOTH LOADING SCREEN ("BACK DOOR" + LOADING BAR) -->
+      <div id="loading-screen" class="interactive-hud absolute inset-0 z-50 flex flex-col items-center justify-center bg-[#070705] p-6 transition-opacity duration-500">
+        <div class="text-[10px] font-mono-cod text-amber-400/80 tracking-[0.28em] uppercase mb-2">
+          LEVEL 0 // BACKROOMS GULAG
+        </div>
+        <h1 class="font-cod text-5xl sm:text-7xl font-bold tracking-[0.10em] uppercase text-white mb-6">
+          BACK <span class="text-amber-400">DOOR</span>
+        </h1>
+        <div class="w-64 sm:w-80 h-2 bg-neutral-900 border border-amber-400/40 rounded-xs overflow-hidden p-[1px] shadow-inner">
+          <div id="loading-bar-fill" class="h-full bg-amber-400 transition-all duration-75" style="width: 0%;"></div>
+        </div>
+        <div class="mt-2.5 flex items-center justify-between w-64 sm:w-80 text-[10px] font-mono-cod text-neutral-400">
+          <span id="loading-status-label">LOADING BACKROOMS GULAG...</span>
+          <span id="loading-percent-label" class="text-amber-300 font-bold">0%</span>
+        </div>
+      </div>
+
+      <!-- 7A. STARTUP TITLE PAGE ("BACK DOOR" — CLEAN WITHOUT GREY DESCRIPTION) -->
+      <div id="startup-screen" class="interactive-hud absolute inset-0 z-40 flex flex-col items-center justify-between p-6 sm:p-10 bg-gradient-to-b from-black/80 via-black/45 to-black/90 backdrop-blur-[2px]">
+        <div class="w-full flex items-center justify-between text-[10px] font-mono-cod text-amber-300/80 tracking-widest uppercase">
+          <span>ENGINE // ZERO-LATENCY WEBGL PBR</span>
+          <span>PC &amp; iOS MOBILE TOUCH READY</span>
+        </div>
+
+        <div class="flex flex-col items-center text-center my-auto max-w-xl px-4">
+          <div class="px-3 py-0.5 bg-amber-500/15 border border-amber-400/40 rounded-xs text-[10px] font-mono-cod text-amber-300 tracking-[0.25em] uppercase mb-3">
+            LEVEL 0 // BACKROOMS GULAG
+          </div>
+          <h1 class="font-cod text-6xl sm:text-8xl font-bold tracking-[0.08em] uppercase text-white drop-shadow-[0_6px_24px_rgba(0,0,0,0.95)] leading-none">
+            BACK <span class="text-amber-400">DOOR</span>
+          </h1>
+
+          <button id="btn-startup-play" type="button" class="mt-8 px-12 py-3.5 bg-amber-400 hover:bg-amber-300 active:scale-95 text-black font-cod text-2xl sm:text-3xl font-bold tracking-[0.12em] uppercase rounded-xs shadow-[0_0_30px_rgba(251,191,36,0.45)] transition cursor-pointer">
+            PLAY
+          </button>
+        </div>
+
+        <div class="w-full flex items-center justify-between text-[10px] font-mono-cod text-neutral-400">
+          <span>NO ENEMY RADAR PING</span>
+          <span>2:00 MATCH TIMER + OVERTIME FLAG</span>
+        </div>
+      </div>
+
+      <!-- 7B. GAME SETUP & ONLINE LOBBY PAGE -->
+      <div id="online-modal" class="interactive-hud hidden absolute inset-0 bg-black/80 backdrop-blur-xs flex items-center justify-center z-30 p-3">
+        <div class="w-full max-w-lg bg-[#12120d]/95 border border-amber-400/50 p-4 sm:p-5 rounded-sm shadow-2xl max-h-[94dvh] overflow-y-auto">
+          <div class="flex items-center justify-between border-b border-white/10 pb-2.5 mb-3.5">
             <div>
-              <div class="text-[9px] font-mono-cod text-emerald-400 uppercase tracking-widest">WEBRTC CLOUD + LOCAL P2P NETWORK</div>
-              <h3 class="font-cod text-xl font-bold text-white uppercase">1v1 & 2v2 ONLINE LOBBY</h3>
+              <div class="text-[9px] font-mono-cod text-amber-400 uppercase tracking-widest">BACK DOOR // MATCH SETUP &amp; LOBBY</div>
+              <h3 class="font-cod text-xl sm:text-2xl font-bold text-white uppercase">GAME SETUP &amp; ONLINE LOBBY</h3>
             </div>
-            <button id="btn-close-online" type="button" class="text-neutral-400 hover:text-white text-xs font-mono-cod px-2 py-1 border border-white/15 rounded-xs cursor-pointer">
-              CLOSE
-            </button>
+            <div class="flex items-center gap-1.5">
+              <button id="btn-back-title" type="button" class="text-neutral-300 hover:text-white text-[10px] font-mono-cod px-2 py-1 border border-white/15 rounded-xs cursor-pointer">
+                TITLE
+              </button>
+              <button id="btn-close-online" type="button" class="text-neutral-400 hover:text-white text-[10px] font-mono-cod px-2 py-1 border border-white/15 rounded-xs cursor-pointer">
+                CLOSE
+              </button>
+            </div>
           </div>
 
           <div class="space-y-3 text-xs">
-            <div class="grid grid-cols-2 gap-2">
+            <div class="grid grid-cols-2 gap-2.5">
               <div>
-                <label for="input-username" class="block text-[10px] font-mono-cod text-neutral-300 mb-1">PLAYER USERNAME</label>
+                <label for="input-username" class="block text-[10px] font-mono-cod text-neutral-300 mb-1">OPERATOR CALLSIGN</label>
                 <input id="input-username" type="text" maxlength="20" value="GhostActual" class="w-full bg-black/80 border border-white/25 rounded-xs px-2.5 py-1.5 text-white font-mono-cod text-xs focus:outline-none focus:border-amber-400" />
               </div>
-              <div>
-                <label for="input-mouse-sens" class="block text-[10px] font-mono-cod text-neutral-300 mb-1">MOUSE SENSITIVITY: <span id="sens-val-label" class="text-amber-300">1.0x</span></label>
-                <input id="input-mouse-sens" type="range" min="0.3" max="2.5" step="0.1" value="1.0" class="w-full accent-amber-400 cursor-pointer mt-1.5" />
-              </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-2">
               <div>
                 <label for="input-room-code" class="block text-[10px] font-mono-cod text-neutral-300 mb-1">ONLINE ROOM CODE</label>
                 <input id="input-room-code" type="text" maxlength="12" value="GULAG-01" class="w-full bg-black/80 border border-emerald-400/40 rounded-xs px-2.5 py-1.5 text-emerald-300 font-mono-cod text-xs uppercase focus:outline-none" />
               </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2">
               <div>
-                <label for="select-lobby-mode" class="block text-[10px] font-mono-cod text-neutral-300 mb-1">MATCH FORMAT</label>
-                <select id="select-lobby-mode" class="w-full bg-black/80 border border-white/25 rounded-xs px-2.5 py-1.5 text-amber-200 font-mono-cod text-xs focus:outline-none">
+                <label for="select-lobby-mode" class="block text-[10px] font-mono-cod text-neutral-300 mb-1">MATCH MODE</label>
+                <select id="select-lobby-mode" class="w-full bg-black/80 border border-white/25 rounded-xs px-2 py-1.5 text-emerald-300 font-mono-cod text-[11px] focus:outline-none">
                   <option value="1v1" selected>1v1 Duel (2:00)</option>
-                  <option value="2v2">2v2 Gunfight (2:00)</option>
+                  <option value="2v2">2v2 Team (2:00)</option>
+                </select>
+              </div>
+              <div>
+                <label for="select-lobby-loadout" class="block text-[10px] font-mono-cod text-neutral-300 mb-1">SHARED LOADOUT</label>
+                <select id="select-lobby-loadout" class="w-full bg-black/80 border border-amber-400/40 rounded-xs px-2 py-1.5 text-amber-200 font-mono-cod text-[11px] focus:outline-none">
+                  <option value="mp5" selected>MP5 SMG</option>
+                  <option value="ak47">AK-47 Rifle</option>
+                  <option value="shotgun">M680 Shotgun</option>
+                  <option value="pistol">M19 Pistol</option>
+                </select>
+              </div>
+              <div>
+                <label for="select-lobby-skill" class="block text-[10px] font-mono-cod text-neutral-300 mb-1">BOT SKILL</label>
+                <select id="select-lobby-skill" class="w-full bg-black/80 border border-white/25 rounded-xs px-2 py-1.5 text-neutral-200 font-mono-cod text-[11px] focus:outline-none">
+                  <option value="regular">Regular</option>
+                  <option value="veteran" selected>Veteran</option>
+                  <option value="demon">Demon</option>
                 </select>
               </div>
             </div>
 
-            <div class="bg-black/60 border border-white/10 p-2.5 rounded-xs font-mono-cod text-[10px] text-neutral-300 space-y-1">
-              <div class="flex items-center justify-between">
-                <span>NETWORK ENGINE:</span>
-                <span id="online-status-text" class="text-emerald-400 font-semibold">WEBRTC + P2P READY</span>
+            <div class="grid grid-cols-3 gap-2">
+              <div>
+                <label for="select-control-scheme" class="block text-[10px] font-mono-cod text-neutral-300 mb-1">CONTROLS</label>
+                <select id="select-control-scheme" class="w-full bg-black/80 border border-cyan-400/35 rounded-xs px-2 py-1.5 text-cyan-200 font-mono-cod text-[11px] focus:outline-none">
+                  <option value="auto" selected>Auto (PC/iOS)</option>
+                  <option value="pc">PC Mouse/KB</option>
+                  <option value="mobile">iOS Touch HUD</option>
+                </select>
               </div>
-              <div class="text-[9px] text-neutral-400 leading-relaxed">
-                Uses PeerJS WebRTC cloud signaling + BroadcastChannel. Deploy on Vercel and enter the same Room Code on any two computers to duel live over the internet!
+              <div>
+                <label for="select-perf-mode" class="block text-[10px] font-mono-cod text-neutral-300 mb-1">PERFORMANCE</label>
+                <select id="select-perf-mode" class="w-full bg-black/80 border border-white/25 rounded-xs px-2 py-1.5 text-neutral-200 font-mono-cod text-[11px] focus:outline-none">
+                  <option value="balanced" selected>Zero-Lag Auto</option>
+                  <option value="low">Low-Spec 60FPS</option>
+                  <option value="ultra">Ultra PBR</option>
+                </select>
+              </div>
+              <div>
+                <label for="input-mouse-sens" class="block text-[10px] font-mono-cod text-neutral-300 mb-1">AIM SENS: <span id="sens-val-label" class="text-amber-300">1.0x</span></label>
+                <input id="input-mouse-sens" type="range" min="0.3" max="2.5" step="0.1" value="1.0" class="w-full accent-amber-400 cursor-pointer mt-1.5" />
               </div>
             </div>
 
-            <button id="btn-save-online" type="button" class="w-full py-2 bg-emerald-500 hover:bg-emerald-400 text-black font-cod text-sm font-bold tracking-wider uppercase rounded-xs cursor-pointer shadow">
-              APPLY & LAUNCH 2:00 MATCH
+            <div class="bg-black/65 border border-white/10 p-2.5 rounded-xs font-mono-cod text-[10px] text-neutral-300 space-y-1">
+              <div class="flex items-center justify-between">
+                <span>LOBBY STATUS:</span>
+                <span id="online-status-text" class="text-emerald-400 font-semibold">WEBRTC + P2P READY</span>
+              </div>
+              <div class="text-[9px] text-neutral-400 leading-relaxed">
+                Enter the same Room Code on two computers or iPhones to duel live via WebRTC, or deploy immediately against tactical Backrooms Gulag bots.
+              </div>
+            </div>
+
+            <button id="btn-save-online" type="button" class="w-full py-2.5 bg-amber-400 hover:bg-amber-300 text-black font-cod text-base font-bold tracking-wider uppercase rounded-xs cursor-pointer shadow-lg">
+              APPLY &amp; LAUNCH 2:00 MATCH
             </button>
           </div>
         </div>
+      </div>
+
+      <!-- 7C. iOS MULTI-TOUCH HUD OVERLAY (ERGONOMIC SPACING + TACTICAL VECTOR SYMBOLS, NO EMOJIS) -->
+      <div id="cod-mobile-hud" class="interactive-hud hidden absolute inset-0 z-20 pointer-events-none select-none">
+        <!-- Right-Half Touch-Look Aiming Zone -->
+        <div id="codm-look-zone" class="absolute top-12 right-0 w-[62%] h-[88%] pointer-events-auto"></div>
+
+        <!-- Left-Thumb Virtual Movement Joystick + Auto-Sprint Indicator -->
+        <div id="codm-joy-zone" class="absolute bottom-6 left-6 w-32 h-32 pointer-events-auto flex items-center justify-center">
+          <div id="codm-joy-base" class="w-28 h-28 rounded-full border-2 border-amber-300/35 bg-black/35 flex items-center justify-center relative shadow-inner">
+            <div id="codm-sprint-badge" class="opacity-0 transition-opacity absolute -top-6 text-[9px] font-mono-cod text-amber-300 bg-black/75 px-1.5 py-0.5 rounded-xs border border-amber-400/40">
+              SPRINT LOCK
+            </div>
+            <div id="codm-joy-knob" class="w-11 h-11 rounded-full bg-amber-400/80 border-2 border-white shadow-lg transition-transform duration-75 flex items-center justify-center">
+              <svg class="w-4 h-4 text-black/80" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 3l4 5h-8l4-5zm0 18l-4-5h8l-4 5zM3 12l5-4v8l-5-4zm18 0l-5 4V8l5 4z"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Upper-Left Claw / Hipfire Button (Bullet Vector Symbol) -->
+        <button id="codm-btn-hipfire" type="button" class="codm-btn pointer-events-auto absolute top-[24%] left-6 w-14 h-14">
+          <svg class="w-6 h-6 text-amber-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M7 17L17 7M13 7h4v4" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="12" cy="12" r="8" stroke-dasharray="3 3"/>
+          </svg>
+          <span class="text-[8px] tracking-wider mt-0.5">HIP</span>
+        </button>
+
+        <!-- Right-Side Ergonomic Arc Cluster (Generous Spacing Between Every Button) -->
+        <!-- 1. Primary Right-Thumb FIRE Button (Bullet + Crosshair Rays SVG) -->
+        <button id="codm-btn-fire" type="button" class="codm-btn pointer-events-auto absolute bg-red-900/55 border-red-400/75" style="bottom: 38px; right: 92px; width: 72px; height: 72px;">
+          <svg class="w-7 h-7 text-white" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2l2.2 4.5V15h-4.4V6.5L12 2zm-2.2 14.5h4.4V20h-4.4v-3.5zM4 11h3v2H4v-2zm13 0h3v2h-3v-2z"/>
+          </svg>
+          <span class="text-[10px] font-bold tracking-wider mt-0.5">FIRE</span>
+        </button>
+
+        <!-- 2. Scope / ADS Button (Optic Crosshair Reticle SVG) -->
+        <button id="codm-btn-ads" type="button" class="codm-btn pointer-events-auto absolute" style="bottom: 126px; right: 20px; width: 52px; height: 52px;">
+          <svg class="w-5 h-5 text-amber-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <circle cx="12" cy="12" r="7"/>
+            <line x1="12" y1="2" x2="12" y2="7"/>
+            <line x1="12" y1="17" x2="12" y2="22"/>
+            <line x1="2" y1="12" x2="7" y2="12"/>
+            <line x1="17" y1="12" x2="22" y2="12"/>
+          </svg>
+          <span class="text-[8px] tracking-wider mt-0.5">ADS</span>
+        </button>
+
+        <!-- 3. Jump / Mantle Button (Double Upward Chevron Vault SVG) -->
+        <button id="codm-btn-jump" type="button" class="codm-btn pointer-events-auto absolute" style="bottom: 68px; right: 16px; width: 48px; height: 48px;">
+          <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="17 11 12 6 7 11"/>
+            <polyline points="17 17 12 12 7 17"/>
+          </svg>
+          <span class="text-[7px] tracking-wider">JUMP</span>
+        </button>
+
+        <!-- 4. Crouch / Slide Button (Double Downward Chevron Slide SVG) -->
+        <button id="codm-btn-crouch" type="button" class="codm-btn pointer-events-auto absolute" style="bottom: 12px; right: 22px; width: 48px; height: 48px;">
+          <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="7 7 12 12 17 7"/>
+            <polyline points="7 13 12 18 17 13"/>
+          </svg>
+          <span class="text-[7px] tracking-wider">SLIDE</span>
+        </button>
+
+        <!-- 5. Reload Button (Circular Chamber Cycle Arrow SVG) -->
+        <button id="codm-btn-reload" type="button" class="codm-btn pointer-events-auto absolute" style="bottom: 12px; right: 180px; width: 46px; height: 46px;">
+          <svg class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12a9 9 0 11-2.64-6.36"/>
+            <polyline points="21 3 21 9 15 9"/>
+          </svg>
+          <span class="text-[7px] tracking-wider mt-0.5">RLD</span>
+        </button>
+
+        <!-- 6. Lethal Frag Grenade Button (Segmented Grenade Silhouette SVG) -->
+        <button id="codm-btn-frag" type="button" class="codm-btn pointer-events-auto absolute" style="bottom: 112px; right: 166px; width: 44px; height: 44px;">
+          <svg class="w-4 h-4 text-amber-200" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 6a6.5 6.5 0 00-6.5 6.5C5.5 16.09 8.41 19 12 19s6.5-2.91 6.5-6.5A6.5 6.5 0 0012 6zm-1-4h2v2h3v1.8h-2.1A6.5 6.5 0 0012 5.5c-.69 0-1.36.1-2 .28V4H8.5V2H11z"/>
+          </svg>
+          <span class="text-[7px] font-bold">FRAG</span>
+        </button>
+
+        <!-- 7. Tactical Stun Grenade Button (Flash Canister Silhouette SVG) -->
+        <button id="codm-btn-stun" type="button" class="codm-btn pointer-events-auto absolute" style="bottom: 62px; right: 192px; width: 44px; height: 44px;">
+          <svg class="w-4 h-4 text-cyan-200" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M9 2h6v3h2v14a2 2 0 01-2 2H9a2 2 0 01-2-2V5h2V2zm2 5v9h2V7h-2z"/>
+          </svg>
+          <span class="text-[7px] font-bold">STUN</span>
+        </button>
       </div>
 
       <!-- 8. END-OF-ROUND VICTORY / DEFEAT BANNER MODAL -->
@@ -435,9 +658,14 @@
             </div>
           </div>
 
-          <button id="btn-modal-rematch" type="button" class="w-full py-2 bg-amber-400 hover:bg-amber-300 text-black font-cod text-base font-bold tracking-wider uppercase rounded-xs transition cursor-pointer shadow-lg">
-            NEXT GULAG 1V1 (SPACE)
-          </button>
+          <div class="flex items-center gap-2">
+            <button id="btn-modal-rematch" type="button" class="flex-1 py-2 bg-amber-400 hover:bg-amber-300 text-black font-cod text-base font-bold tracking-wider uppercase rounded-xs transition cursor-pointer shadow-lg">
+              NEXT GULAG 1V1 (SPACE)
+            </button>
+            <button id="btn-modal-setup" type="button" class="py-2 px-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-white/20 font-mono-cod text-xs uppercase rounded-xs cursor-pointer">
+              MATCH SETUP
+            </button>
+          </div>
         </div>
       </div>
 
@@ -446,7 +674,7 @@
 
   <script>
     // ============================================================================
-    // CALL OF DUTY: WARZONE — BACKROOMS GULAG (AAA PBR ENGINE + WEBRTC ONLINE)
+    // BACK DOOR — BACKROOMS GULAG (AAA PBR ENGINE + WEBRTC ONLINE)
     // ============================================================================
     (function () {
       'use strict';
@@ -1046,10 +1274,29 @@
         canvas.height = 512;
         const ctx = canvas.getContext('2d');
 
-        ctx.fillStyle = '#928348';
+        // Authentic Backrooms acoustic drop-ceiling tile base (no baked white rectangles)
+        ctx.fillStyle = '#87783e';
         ctx.fillRect(0, 0, 512, 512);
 
-        ctx.strokeStyle = '#4e4522';
+        // Subtle tile-to-tile tonal variation
+        for (let tx = 0; tx < 512; tx += 128) {
+          for (let ty = 0; ty < 512; ty += 128) {
+            const delta = (Math.random() - 0.5) * 10;
+            ctx.fillStyle = delta > 0 ? `rgba(230,210,120,${delta / 140})` : `rgba(30,25,10,${-delta / 110})`;
+            ctx.fillRect(tx + 4, ty + 4, 120, 120);
+          }
+        }
+
+        // Acoustic tile pinhole speckles
+        for (let i = 0; i < 3200; i++) {
+          const x = Math.random() * 512;
+          const y = Math.random() * 512;
+          ctx.fillStyle = Math.random() > 0.35 ? 'rgba(42, 35, 14, 0.24)' : 'rgba(210, 190, 105, 0.10)';
+          ctx.fillRect(x, y, 2, 2);
+        }
+
+        // Recessed T-bar acoustic grid lines
+        ctx.strokeStyle = '#473e1d';
         ctx.lineWidth = 6;
         for (let x = 0; x <= 512; x += 128) {
           ctx.beginPath();
@@ -1063,12 +1310,6 @@
           ctx.lineTo(512, y);
           ctx.stroke();
         }
-
-        ctx.fillStyle = '#fffbe0';
-        ctx.fillRect(140, 140, 232, 104);
-        ctx.strokeStyle = '#6b6033';
-        ctx.lineWidth = 4;
-        ctx.strokeRect(140, 140, 232, 104);
 
         const tex = new THREE.CanvasTexture(canvas);
         tex.wrapS = THREE.RepeatWrapping;
@@ -1291,8 +1532,17 @@
         addBoxWall(px, 0, pz, 1.05, WALL_H, 1.05, matWallOuter, true, 'pillar', false);
       });
 
-      // Center Gulag Bunker & Sloped Cover (Mantleable)
+      // Center Gulag Bunker, Sloped Wedge & Flagpole Colliders (No clipping through center objects!)
       addBoxWall(-0.35, 0, -0.4, 2.2, 1.55, 1.6, matWallCover, true, 'center', true);
+      addBoxWall(1.05, 0, -0.4, 1.35, 1.45, 1.35, matWallCover, true, 'center', true);
+      wallColliders.push({
+        minX: -0.22, maxX: 0.22,
+        minZ: 1.13, maxZ: 1.57,
+        minY: 0, maxY: 2.9,
+        mapType: 'pillar',
+        mantleable: false,
+        mesh: null
+      });
 
       const crateConfigs = [
         [-5.2, 8.2, 1.3, 1.15, 1.3],
@@ -1351,12 +1601,52 @@
           scene.add(stepMesh);
         }
 
-        const railEdgeX = xCenter > 0 ? xCenter - width / 2 + 0.08 : xCenter + width / 2 - 0.08;
-        const railPts = [
-          new THREE.Vector3(railEdgeX, 0.9, zStart),
-          new THREE.Vector3(railEdgeX, UPPER_Y + 0.9, zEnd)
+        // Build 3D Tubular Steel Handrails, Mid-Rails & Vertical Baluster Posts on staircase edges
+        const railSides = [
+          xCenter > 0 ? xCenter - width / 2 + 0.07 : xCenter + width / 2 - 0.07,
+          xCenter > 0 ? xCenter + width / 2 - 0.07 : xCenter - width / 2 + 0.07
         ];
-        scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(railPts), new THREE.LineBasicMaterial({ color: 0xd4b84a })));
+        const runZ = zEnd - zStart;
+        const riseY = UPPER_Y;
+        const railLength = Math.hypot(runZ, riseY);
+        const slopeAngle = Math.atan2(riseY, Math.abs(runZ)) * (runZ >= 0 ? -1 : 1);
+
+        railSides.forEach((rx) => {
+          // Top 3D tubular steel handrail
+          const topRail = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.034, 0.034, railLength + 0.2, 12),
+            matDarkIron
+          );
+          topRail.position.set(rx, riseY / 2 + 0.92, (zStart + zEnd) / 2);
+          topRail.rotation.x = Math.PI / 2 + slopeAngle;
+          topRail.castShadow = true;
+          scene.add(topRail);
+
+          // Mid-height safety rail
+          const midRail = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.022, 0.022, railLength + 0.15, 10),
+            matDarkIron
+          );
+          midRail.position.set(rx, riseY / 2 + 0.50, (zStart + zEnd) / 2);
+          midRail.rotation.x = Math.PI / 2 + slopeAngle;
+          scene.add(midRail);
+
+          // 5 Vertical 3D steel baluster posts anchored into the steps
+          const postCount = 5;
+          for (let pIdx = 0; pIdx <= postCount; pIdx++) {
+            const frac = pIdx / postCount;
+            const pz = zStart + frac * runZ;
+            const pyBase = frac * riseY;
+            const postH = 0.94;
+            const postMesh = new THREE.Mesh(
+              new THREE.CylinderGeometry(0.028, 0.032, postH, 10),
+              matDarkIron
+            );
+            postMesh.position.set(rx, pyBase + postH / 2, pz);
+            postMesh.castShadow = true;
+            scene.add(postMesh);
+          }
+        });
 
         const minZ = Math.min(zStart, zEnd);
         const maxZ = Math.max(zStart, zEnd);
@@ -1370,6 +1660,19 @@
             return t * UPPER_Y;
           },
           mapType: 'stairs'
+        });
+        // Solid side stringer collider on inner side of staircase so players cannot walk through the side of stairs
+        const innerSideX = xCenter > 0 ? xCenter - width / 2 - 0.08 : xCenter + width / 2 + 0.08;
+        wallColliders.push({
+          minX: innerSideX - 0.14,
+          maxX: innerSideX + 0.14,
+          minZ: minZ + 0.35,
+          maxZ: maxZ - 0.35,
+          minY: 0,
+          maxY: UPPER_Y + 0.75,
+          mapType: 'railing',
+          mantleable: true,
+          mesh: null
         });
       }
 
@@ -1407,12 +1710,18 @@
       // --- 6. LIGHTING, DYNAMIC MUZZLE POINT LIGHT & DUST ---
       scene.add(new THREE.AmbientLight(0x9a8b50, 0.95));
 
-      const centerSkylight = new THREE.Mesh(
-        new THREE.PlaneGeometry(4.2, 6.5),
-        new THREE.MeshBasicMaterial({ color: 0xfffbe0 })
+      // Framed recessed center light fixture (replaces giant outlying white rectangle)
+      const centerFixtureFrame = new THREE.Mesh(
+        new THREE.BoxGeometry(1.8, 0.08, 2.4),
+        matDarkIron
       );
-      centerSkylight.rotation.x = Math.PI / 2;
-      centerSkylight.position.set(0, WALL_H - 0.02, 1.5);
+      centerFixtureFrame.position.set(0, WALL_H - 0.03, 1.5);
+      scene.add(centerFixtureFrame);
+      const centerSkylight = new THREE.Mesh(
+        new THREE.BoxGeometry(1.56, 0.05, 2.16),
+        new THREE.MeshBasicMaterial({ color: 0xf7e7a6 })
+      );
+      centerSkylight.position.set(0, WALL_H - 0.05, 1.5);
       scene.add(centerSkylight);
 
       const centerSpot = new THREE.SpotLight(0xfff4c2, 18.0, 34, Math.PI / 3, 0.55, 1.5);
@@ -1448,11 +1757,17 @@
         [0, -12.5], [-6.5, -11.5], [6.5, -11.5]
       ];
       lightCoords.forEach(([lx, lz], idx) => {
-        const panel = new THREE.Mesh(
-          new THREE.BoxGeometry(1.4, 0.08, 0.65),
-          new THREE.MeshBasicMaterial({ color: 0xfef0b8 })
+        const bezel = new THREE.Mesh(
+          new THREE.BoxGeometry(1.46, 0.07, 0.72),
+          matDarkIron
         );
-        panel.position.set(lx, WALL_H - 0.05, lz);
+        bezel.position.set(lx, WALL_H - 0.03, lz);
+        scene.add(bezel);
+        const panel = new THREE.Mesh(
+          new THREE.BoxGeometry(1.28, 0.04, 0.54),
+          new THREE.MeshBasicMaterial({ color: 0xf3e29e })
+        );
+        panel.position.set(lx, WALL_H - 0.055, lz);
         scene.add(panel);
 
         const pt = new THREE.PointLight(0xffe88a, 7.5, 18, 1.6);
@@ -1828,7 +2143,7 @@
         }
       }
 
-      // --- 8. HIGH-POLY CONTOURED CALL OF DUTY OPERATOR FACTORY (SMOOTH ORGANIC SILHOUETTE) ---
+      // --- 8. HIGH-POLY CONTOURED Tactical FPS OPERATOR FACTORY (SMOOTH ORGANIC SILHOUETTE) ---
       function createUpscaledOperator(isAlly = false) {
         const root = new THREE.Group();
 
@@ -2245,6 +2560,57 @@
       let peerInstance = null;
       let activePeerConn = null;
 
+      
+      function showOpponentDisconnectNotice(peerName = 'Opponent') {
+        sfx.playBuzzer(180);
+        const banner = document.getElementById('disconnect-banner');
+        const txt = document.getElementById('disconnect-banner-text');
+        if (banner && txt) {
+          txt.textContent = `OPPONENT DISCONNECTED — ${peerName.toUpperCase()} LEFT THE MATCH`;
+          banner.style.opacity = '1';
+          banner.style.transform = 'scale(1.04)';
+          clearTimeout(banner._t);
+          banner._t = setTimeout(() => {
+            banner.style.opacity = '0';
+            banner.style.transform = 'scale(0.96)';
+          }, 3800);
+        }
+        showCombatToast(`${peerName} DISCONNECTED — MATCH CONCLUDED`);
+        // If enemy disconnected in 1v1, grant win after short notice
+        if (state.roundActive && state.enemies[0].isRemotePeer) {
+          setTimeout(() => {
+            if (state.roundActive) endRound(true, `${peerName} DISCONNECTED — GULAG FORFEIT VICTORY`);
+          }, 1200);
+        }
+      }
+
+      function leaveMatchToSetup() {
+        if (document.pointerLockElement === canvasEl && document.exitPointerLock) {
+          try { document.exitPointerLock(); } catch (e) {}
+        }
+        state.roundActive = false;
+        mouseFireHeld = false;
+        appScreenState = 'setup';
+
+        // Notify remote peers of graceful departure
+        sendNetworkPayload({ type: 'peer_disconnect', username: state.username });
+
+        document.getElementById('startup-screen').classList.add('hidden');
+        document.getElementById('round-modal').classList.add('hidden');
+        document.getElementById('online-modal').classList.remove('hidden');
+        updateControlSchemeVisibility();
+        showCombatToast('RETURNED TO MATCH SETUP & LOBBY');
+      }
+
+      document.getElementById('btn-leave-match').addEventListener('click', leaveMatchToSetup);
+      document.getElementById('btn-modal-setup').addEventListener('click', leaveMatchToSetup);
+
+      window.addEventListener('keydown', (e) => {
+        if (e.code === 'Escape' && appScreenState === 'playing') {
+          leaveMatchToSetup();
+        }
+      });
+
       function handleIncomingNetworkPayload(msg) {
         if (!msg || !state.roundActive) return;
         if (msg.type === 'peer_state' && state.enemies[0].hp > 0 && !state.enemies[0].dying) {
@@ -2258,6 +2624,8 @@
           document.getElementById('enemy-name-label').textContent = e1.name;
         } else if (msg.type === 'peer_loadout' && state.countdownTime > 0) {
           applySharedLoadout(msg.weaponKey, false);
+        } else if (msg.type === 'peer_disconnect') {
+          showOpponentDisconnectNotice(msg.username || 'PeerOp');
         } else if (msg.type === 'peer_hit' && !state.player.dying) {
           state.player.hp = Math.max(0, state.player.hp - msg.dmg);
           flashDamageOverlay();
@@ -2302,6 +2670,12 @@
                 showCombatToast('ONLINE OPPONENT CONNECTED VIA WEBRTC!');
               });
               conn.on('data', (data) => handleIncomingNetworkPayload(data));
+              conn.on('close', () => {
+                showOpponentDisconnectNotice(state.enemies[0].name || 'Player 2');
+              });
+              conn.on('error', () => {
+                showOpponentDisconnectNotice(state.enemies[0].name || 'Player 2');
+              });
             });
             peerInstance.on('error', (err) => {
               // If host ID is already taken by Player 1, join as Player 2 Client!
@@ -2316,6 +2690,12 @@
                     showCombatToast(`JOINED ONLINE HOST IN ROOM ${cleanCode}!`);
                   });
                   conn.on('data', (data) => handleIncomingNetworkPayload(data));
+                  conn.on('close', () => {
+                    showOpponentDisconnectNotice('Room Host');
+                  });
+                  conn.on('error', () => {
+                    showOpponentDisconnectNotice('Room Host');
+                  });
                 });
               }
             });
@@ -2565,7 +2945,7 @@
         }
       }
 
-      // --- 13. CALL OF DUTY RESPONSIVE CONTROLS & RAW MOUSE INPUT ---
+      // --- 13. Tactical FPS RESPONSIVE CONTROLS & RAW MOUSE INPUT ---
       const keys = {};
       let isPointerLocked = false;
       let isMouseDragging = false;
@@ -3061,28 +3441,57 @@
         showCombatToast(type === 'frag' ? 'FRAG OUT!' : 'STUN OUT!');
       }
 
-      function resolveWorldCollisions(entity, radius = 0.44) {
-        entity.x = Math.max(-ARENA_HALF_W + 0.65, Math.min(ARENA_HALF_W - 0.65, entity.x));
-        entity.z = Math.max(-ARENA_HALF_L + 0.65, Math.min(ARENA_HALF_L - 0.65, entity.z));
-
+      function resolveWorldCollisions(entity, radius = 0.48) {
         const footY = entity.footY || 0;
-        for (let i = 0; i < wallColliders.length; i++) {
-          const b = wallColliders[i];
-          if (b.mapType === 'outer') continue;
-          if (footY >= b.maxY - 0.15) continue;
-          if (footY + 1.65 <= (b.minY || 0)) continue;
+        // 3 iterative depenetration passes so corner wedges & pillars never allow clipping
+        for (let pass = 0; pass < 3; pass++) {
+          entity.x = Math.max(-ARENA_HALF_W + 0.68, Math.min(ARENA_HALF_W - 0.68, entity.x));
+          entity.z = Math.max(-ARENA_HALF_L + 0.68, Math.min(ARENA_HALF_L - 0.68, entity.z));
 
-          const closestX = Math.max(b.minX, Math.min(entity.x, b.maxX));
-          const closestZ = Math.max(b.minZ, Math.min(entity.z, b.maxZ));
-          const dx = entity.x - closestX;
-          const dz = entity.z - closestZ;
-          const distSq = dx * dx + dz * dz;
-          if (distSq < radius * radius) {
-            const dist = Math.sqrt(distSq) || 0.001;
-            const overlap = radius - dist;
-            entity.x += (dx / dist) * overlap;
-            entity.z += (dz / dist) * overlap;
+          for (let i = 0; i < wallColliders.length; i++) {
+            const b = wallColliders[i];
+            if (b.mapType === 'outer') continue;
+            if (footY >= b.maxY - 0.12) continue;
+            if (footY + 1.65 <= (b.minY || 0)) continue;
+
+            const closestX = Math.max(b.minX, Math.min(entity.x, b.maxX));
+            const closestZ = Math.max(b.minZ, Math.min(entity.z, b.maxZ));
+            let dx = entity.x - closestX;
+            let dz = entity.z - closestZ;
+            const distSq = dx * dx + dz * dz;
+
+            if (distSq < radius * radius) {
+              if (distSq > 0.00001) {
+                const dist = Math.sqrt(distSq);
+                const overlap = radius - dist;
+                entity.x += (dx / dist) * overlap;
+                entity.z += (dz / dist) * overlap;
+              } else {
+                // Entity center is inside AABB: push out along nearest face axis
+                const penLeft = Math.abs(entity.x - b.minX);
+                const penRight = Math.abs(b.maxX - entity.x);
+                const penFront = Math.abs(entity.z - b.minZ);
+                const penBack = Math.abs(b.maxZ - entity.z);
+                const minPen = Math.min(penLeft, penRight, penFront, penBack);
+                if (minPen === penLeft) entity.x = b.minX - radius;
+                else if (minPen === penRight) entity.x = b.maxX + radius;
+                else if (minPen === penFront) entity.z = b.minZ - radius;
+                else entity.z = b.maxZ + radius;
+              }
+            }
           }
+        }
+      }
+
+      function moveEntitySubstepped(entity, moveDX, moveDZ, radius = 0.48) {
+        const steps = 4;
+        const stepX = moveDX / steps;
+        const stepZ = moveDZ / steps;
+        for (let s = 0; s < steps; s++) {
+          entity.x += stepX;
+          resolveWorldCollisions(entity, radius);
+          entity.z += stepZ;
+          resolveWorldCollisions(entity, radius);
         }
       }
 
@@ -3632,7 +4041,7 @@
           updateHUD();
         }
 
-        // 2. Player Falling/Dying Sequence OR Call of Duty Responsive Movement & Aiming
+        // 2. Player Falling/Dying Sequence OR Tactical FPS Responsive Movement & Aiming
         if (p.dying) {
           p.deathTimer += dt;
           const fallT = Math.min(1, p.deathTimer / 0.65);
@@ -3709,7 +4118,7 @@
               maxSpeed *= 0.4;
             }
 
-            // Snappy Call of Duty velocity acceleration & instant counter-strafing
+            // Snappy Tactical FPS velocity acceleration & instant counter-strafing
             let wishVX = 0;
             let wishVZ = 0;
             if (isMoving) {
@@ -3727,9 +4136,7 @@
             p.vz += (wishVZ - p.vz) * Math.min(1, dt * accelRate);
 
             if (canMoveNow && Math.hypot(p.vx, p.vz) > 0.02) {
-              p.x += p.vx * dt;
-              p.z += p.vz * dt;
-              resolveWorldCollisions(p, 0.45);
+              moveEntitySubstepped(p, p.vx * dt, p.vz * dt, 0.48);
             }
 
             if (isMoving) {
@@ -3747,6 +4154,11 @@
             if (!p.grounded) {
               p.footY += p.vy * dt;
               p.vy -= 15.0 * dt;
+              // Headroom ceiling check under upper floor catwalk decks
+              if (p.footY < UPPER_Y - 0.8 && Math.abs(p.x) > 6.4 && Math.abs(p.z) < 5.6 && p.footY + 1.75 > UPPER_Y - 0.25) {
+                p.footY = UPPER_Y - 2.0;
+                if (p.vy > 0) p.vy = -0.5;
+              }
               if (p.footY <= groundY) {
                 p.footY = groundY;
                 p.vy = 0;
@@ -3783,7 +4195,7 @@
           camera.rotation.x = p.pitch + p.recoilPitchAccum - mantleDip * 0.6;
           camera.rotation.z = p.lean + (p.sliding ? 0.08 : 0);
 
-          // 3. Snappy Call of Duty ADS & Weapon Animations
+          // 3. Snappy Tactical FPS ADS & Weapon Animations
           const targetAds = p.ads ? 1 : 0;
           p.adsBlend += (targetAds - p.adsBlend) * Math.min(1, dt * 22);
 
@@ -3946,8 +4358,17 @@
           }
         }
 
-        // 5. Update AI & Minimap
-        updateOperatorsAI(dt, now);
+        // 5. Update AI & Minimap (or Orbit Camera on "BACK DOOR" Startup Screen)
+        if (appScreenState !== 'playing') {
+          const orbitAngle = now * 0.00028;
+          camera.position.set(Math.sin(orbitAngle) * 3.2, 2.15 + Math.sin(now * 0.001) * 0.12, 11.5 + Math.cos(orbitAngle) * 2.2);
+          camera.rotation.order = 'YXZ';
+          camera.rotation.y = Math.sin(orbitAngle * 0.7) * 0.22;
+          camera.rotation.x = -0.06;
+          camera.rotation.z = 0;
+        } else {
+          updateOperatorsAI(dt, now);
+        }
         renderMinimap();
 
         // 6. Render World & Weapon Viewmodel
@@ -3967,9 +4388,361 @@
         viewCamera.updateProjectionMatrix();
       });
 
-      window.onload = () => {
+      // --- 19. STARTUP SCREEN ("BACK DOOR"), SETUP LOBBY, ZERO-LATENCY TUNER & iOS CoD MOBILE TOUCH ---
+      let appScreenState = 'startup'; // 'startup' | 'setup' | 'playing'
+      let controlScheme = 'auto';     // 'auto' | 'pc' | 'mobile'
+      let touchJoyVec = { x: 0, y: 0, sprinting: false };
+
+      function isTouchDevice() {
+        return ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.innerWidth <= 820;
+      }
+
+      function updateControlSchemeVisibility() {
+        const showMobile = (controlScheme === 'mobile') || (controlScheme === 'auto' && isTouchDevice());
+        const hudEl = document.getElementById('cod-mobile-hud');
+        if (hudEl) {
+          hudEl.classList.toggle('hidden', !(showMobile && appScreenState === 'playing'));
+        }
+        // Position weapon & ammo box in the lower middle ONLY when playing on mobile so it never overlaps touch controls
+        const wpnBox = document.getElementById('weapon-hud-container');
+        if (wpnBox) {
+          if (showMobile) {
+            wpnBox.className = 'absolute bottom-2.5 left-1/2 -translate-x-1/2 flex items-end gap-2.5 select-none transition-all duration-150';
+          } else {
+            wpnBox.className = 'absolute bottom-2.5 right-3.5 flex items-end gap-2.5 select-none transition-all duration-150';
+          }
+        }
+      }
+
+      function applyPerformancePreset(preset) {
+        if (preset === 'low') {
+          renderer.setPixelRatio(1.0);
+          renderer.shadowMap.enabled = false;
+          dustParticles.visible = false;
+        } else if (preset === 'ultra') {
+          renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2.0));
+          renderer.shadowMap.enabled = true;
+          dustParticles.visible = true;
+        } else {
+          // Zero-Lag Auto: crisp 1.25x cap for butter-smooth 60 FPS on laptops & iPhones
+          renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.35));
+          renderer.shadowMap.enabled = true;
+          dustParticles.visible = true;
+        }
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      }
+
+      // Startup "BACK DOOR" -> Play button -> Opens Game Setup & Lobby Page
+      document.getElementById('btn-startup-play').addEventListener('click', () => {
+        sfx.init();
+        sfx.playBuzzer(300);
+        appScreenState = 'setup';
+        document.getElementById('startup-screen').classList.add('hidden');
+        document.getElementById('online-modal').classList.remove('hidden');
+        // Sync current values into Setup controls
+        document.getElementById('select-lobby-loadout').value = state.weaponKey;
+        document.getElementById('select-lobby-skill').value = state.difficulty;
+        document.getElementById('select-lobby-mode').value = state.mode;
+      });
+
+      document.getElementById('btn-back-title').addEventListener('click', () => {
+        appScreenState = 'startup';
+        state.roundActive = false;
+        document.getElementById('online-modal').classList.add('hidden');
+        document.getElementById('startup-screen').classList.remove('hidden');
+        updateControlSchemeVisibility();
+      });
+
+      document.getElementById('select-lobby-loadout').addEventListener('change', (e) => {
+        applySharedLoadout(e.target.value, true);
+      });
+
+      document.getElementById('select-lobby-skill').addEventListener('change', (e) => {
+        state.difficulty = e.target.value;
+        document.getElementById('difficulty-select').value = state.difficulty;
+      });
+
+      document.getElementById('select-control-scheme').addEventListener('change', (e) => {
+        controlScheme = e.target.value;
+        updateControlSchemeVisibility();
+      });
+
+      document.getElementById('select-perf-mode').addEventListener('change', (e) => {
+        applyPerformancePreset(e.target.value);
+      });
+
+      // Enhance btn-save-online to transition from Setup Lobby into active 5s Countdown + 2:00 Match
+      document.getElementById('btn-save-online').addEventListener('click', () => {
+        sfx.init();
+        const chosenLoadout = document.getElementById('select-lobby-loadout').value;
+        const chosenSkill = document.getElementById('select-lobby-skill').value;
+        controlScheme = document.getElementById('select-control-scheme').value;
+        applyPerformancePreset(document.getElementById('select-perf-mode').value);
+
+        state.difficulty = chosenSkill;
+        document.getElementById('difficulty-select').value = chosenSkill;
+        applySharedLoadout(chosenLoadout, true);
+
+        appScreenState = 'playing';
+        document.getElementById('startup-screen').classList.add('hidden');
+        document.getElementById('online-modal').classList.add('hidden');
+        updateControlSchemeVisibility();
         resetPositionsForRound();
+      });
+
+      // --- iOS / CoD MOBILE MULTI-TOUCH CONTROLLER ---
+      (function initCoDMobileTouchControls() {
+        const joyZone = document.getElementById('codm-joy-zone');
+        const joyKnob = document.getElementById('codm-joy-knob');
+        const sprintBadge = document.getElementById('codm-sprint-badge');
+        const lookZone = document.getElementById('codm-look-zone');
+        const btnFire = document.getElementById('codm-btn-fire');
+        const btnHip = document.getElementById('codm-btn-hipfire');
+        const btnAds = document.getElementById('codm-btn-ads');
+        const btnJump = document.getElementById('codm-btn-jump');
+        const btnCrouch = document.getElementById('codm-btn-crouch');
+        const btnReload = document.getElementById('codm-btn-reload');
+        const btnFrag = document.getElementById('codm-btn-frag');
+        const btnStun = document.getElementById('codm-btn-stun');
+
+        let joyTouchId = null;
+        let joyOrigin = { x: 0, y: 0 };
+        const maxJoyRadius = 42;
+
+        function updateJoystickFromTouch(touch) {
+          const dx = touch.clientX - joyOrigin.x;
+          const dy = touch.clientY - joyOrigin.y;
+          const dist = Math.hypot(dx, dy);
+          const clampedDist = Math.min(maxJoyRadius, dist);
+          const angle = Math.atan2(dy, dx);
+          const kx = Math.cos(angle) * clampedDist;
+          const ky = Math.sin(angle) * clampedDist;
+
+          joyKnob.style.transform = `translate(${kx}px, ${ky}px)`;
+          touchJoyVec.x = kx / maxJoyRadius;
+          touchJoyVec.y = -ky / maxJoyRadius; // Up is +forward
+          touchJoyVec.sprinting = (touchJoyVec.y > 0.78);
+          sprintBadge.style.opacity = touchJoyVec.sprinting ? '1' : '0';
+
+          // Map virtual joystick into WASD keys so movement physics & counter-strafing work identically!
+          keys['KeyW'] = touchJoyVec.y > 0.22;
+          keys['KeyS'] = touchJoyVec.y < -0.22;
+          keys['KeyD'] = touchJoyVec.x > 0.22;
+          keys['KeyA'] = touchJoyVec.x < -0.22;
+          keys['ShiftLeft'] = touchJoyVec.sprinting;
+        }
+
+        function resetJoystick() {
+          joyTouchId = null;
+          joyKnob.style.transform = 'translate(0px, 0px)';
+          touchJoyVec.x = 0;
+          touchJoyVec.y = 0;
+          touchJoyVec.sprinting = false;
+          sprintBadge.style.opacity = '0';
+          keys['KeyW'] = false;
+          keys['KeyS'] = false;
+          keys['KeyD'] = false;
+          keys['KeyA'] = false;
+          keys['ShiftLeft'] = false;
+        }
+
+        joyZone.addEventListener('touchstart', (e) => {
+          e.preventDefault();
+          sfx.init();
+          const t = e.changedTouches[0];
+          joyTouchId = t.identifier;
+          const rect = joyZone.getBoundingClientRect();
+          joyOrigin = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+          updateJoystickFromTouch(t);
+        }, { passive: false });
+
+        joyZone.addEventListener('touchmove', (e) => {
+          e.preventDefault();
+          for (let i = 0; i < e.changedTouches.length; i++) {
+            if (e.changedTouches[i].identifier === joyTouchId) {
+              updateJoystickFromTouch(e.changedTouches[i]);
+            }
+          }
+        }, { passive: false });
+
+        joyZone.addEventListener('touchend', (e) => {
+          for (let i = 0; i < e.changedTouches.length; i++) {
+            if (e.changedTouches[i].identifier === joyTouchId) resetJoystick();
+          }
+        });
+        joyZone.addEventListener('touchcancel', resetJoystick);
+
+        // Right-Half Touch-Look Aiming (plus Drag-While-Firing on Primary Fire Button!)
+        let lookTouchId = null;
+        let lastLookPos = { x: 0, y: 0 };
+
+        function handleTouchLookMove(t) {
+          if (!state.roundActive || state.player.dying) return;
+          const dx = t.clientX - lastLookPos.x;
+          const dy = t.clientY - lastLookPos.y;
+          lastLookPos = { x: t.clientX, y: t.clientY };
+          const sens = (state.player.ads ? 0.0032 : 0.0048) * state.mouseSensMult;
+          state.player.yaw -= dx * sens;
+          state.player.pitch = Math.max(-1.42, Math.min(1.42, state.player.pitch - dy * sens));
+        }
+
+        lookZone.addEventListener('touchstart', (e) => {
+          e.preventDefault();
+          sfx.init();
+          const t = e.changedTouches[0];
+          lookTouchId = t.identifier;
+          lastLookPos = { x: t.clientX, y: t.clientY };
+        }, { passive: false });
+
+        lookZone.addEventListener('touchmove', (e) => {
+          e.preventDefault();
+          for (let i = 0; i < e.changedTouches.length; i++) {
+            if (e.changedTouches[i].identifier === lookTouchId) {
+              handleTouchLookMove(e.changedTouches[i]);
+            }
+          }
+        }, { passive: false });
+
+        lookZone.addEventListener('touchend', (e) => {
+          for (let i = 0; i < e.changedTouches.length; i++) {
+            if (e.changedTouches[i].identifier === lookTouchId) lookTouchId = null;
+          }
+        });
+
+        // CoD Mobile Right-Thumb Fire Button (Supports Hold to Auto-Fire + Drag Thumb to Aim!)
+        let fireTouchId = null;
+        let lastFirePos = { x: 0, y: 0 };
+        btnFire.addEventListener('touchstart', (e) => {
+          e.preventDefault();
+          sfx.init();
+          btnFire.classList.add('active-touch');
+          const t = e.changedTouches[0];
+          fireTouchId = t.identifier;
+          lastFirePos = { x: t.clientX, y: t.clientY };
+          mouseFireHeld = true;
+          if (state.countdownTime <= 0) attemptPlayerFire();
+        }, { passive: false });
+
+        btnFire.addEventListener('touchmove', (e) => {
+          e.preventDefault();
+          for (let i = 0; i < e.changedTouches.length; i++) {
+            const t = e.changedTouches[i];
+            if (t.identifier === fireTouchId) {
+              const dx = t.clientX - lastFirePos.x;
+              const dy = t.clientY - lastFirePos.y;
+              lastFirePos = { x: t.clientX, y: t.clientY };
+              const sens = (state.player.ads ? 0.0032 : 0.0046) * state.mouseSensMult;
+              state.player.yaw -= dx * sens;
+              state.player.pitch = Math.max(-1.42, Math.min(1.42, state.player.pitch - dy * sens));
+            }
+          }
+        }, { passive: false });
+
+        const endFireTouch = () => {
+          fireTouchId = null;
+          mouseFireHeld = false;
+          btnFire.classList.remove('active-touch');
+        };
+        btnFire.addEventListener('touchend', endFireTouch);
+        btnFire.addEventListener('touchcancel', endFireTouch);
+        btnFire.addEventListener('mousedown', (e) => {
+          e.stopPropagation();
+          sfx.init();
+          mouseFireHeld = true;
+          if (state.countdownTime <= 0) attemptPlayerFire();
+        });
+        btnFire.addEventListener('mouseup', () => { mouseFireHeld = false; });
+
+        // Upper-Left Claw Hipfire Button
+        btnHip.addEventListener('touchstart', (e) => {
+          e.preventDefault();
+          sfx.init();
+          mouseFireHeld = true;
+          if (state.countdownTime <= 0) attemptPlayerFire();
+        }, { passive: false });
+        btnHip.addEventListener('touchend', () => { mouseFireHeld = false; });
+        btnHip.addEventListener('click', () => {
+          if (state.countdownTime <= 0) attemptPlayerFire();
+        });
+
+        // Scope / ADS Button
+        const toggleAds = (e) => {
+          if (e) e.preventDefault();
+          state.player.ads = !state.player.ads;
+          btnAds.classList.toggle('active-touch', state.player.ads);
+        };
+        btnAds.addEventListener('touchstart', toggleAds, { passive: false });
+        btnAds.addEventListener('click', toggleAds);
+
+        // Jump / Mantle Button
+        const onJumpTap = (e) => {
+          if (e) e.preventDefault();
+          triggerMantleOrJump();
+        };
+        btnJump.addEventListener('touchstart', onJumpTap, { passive: false });
+        btnJump.addEventListener('click', onJumpTap);
+
+        // Crouch / Slide Button
+        const onCrouchTap = (e) => {
+          if (e) e.preventDefault();
+          if (state.countdownTime > 0) return;
+          if (state.player.sprinting && state.player.grounded && !state.player.sliding) {
+            state.player.sliding = true;
+            state.player.slideTimer = 0.52;
+            state.player.crouching = true;
+          } else {
+            state.player.crouching = !state.player.crouching;
+          }
+        };
+        btnCrouch.addEventListener('touchstart', onCrouchTap, { passive: false });
+        btnCrouch.addEventListener('click', onCrouchTap);
+
+        // Reload, Frag & Stun Buttons
+        btnReload.addEventListener('touchstart', (e) => { e.preventDefault(); triggerReload(); }, { passive: false });
+        btnReload.addEventListener('click', triggerReload);
+        btnFrag.addEventListener('touchstart', (e) => { e.preventDefault(); throwGrenade('frag'); }, { passive: false });
+        btnFrag.addEventListener('click', () => throwGrenade('frag'));
+        btnStun.addEventListener('touchstart', (e) => { e.preventDefault(); throwGrenade('stun'); }, { passive: false });
+        btnStun.addEventListener('click', () => throwGrenade('stun'));
+      })();
+
+      window.onload = () => {
+        applyPerformancePreset('balanced');
+        updateControlSchemeVisibility();
+        resetPositionsForRound();
+        state.roundActive = false;
         requestAnimationFrame(animate);
+
+        // Seamless Loading Screen to Title Screen crossfade (Zero disappearing/reappearing title cut!)
+        const loadScreen = document.getElementById('loading-screen');
+        const loadFill = document.getElementById('loading-bar-fill');
+        const loadPct = document.getElementById('loading-percent-label');
+        const loadStatus = document.getElementById('loading-status-label');
+
+        let progress = 0;
+        const loadInterval = setInterval(() => {
+          progress = Math.min(100, progress + 5 + Math.floor(Math.random() * 6));
+          if (loadFill) loadFill.style.width = `${progress}%`;
+          if (loadPct) loadPct.textContent = `${progress}%`;
+          if (loadStatus) {
+            if (progress < 45) loadStatus.textContent = 'INITIALIZING PBR BACKROOMS...';
+            else if (progress < 85) loadStatus.textContent = 'PREPARING GULAG ARENA...';
+            else loadStatus.textContent = 'READY';
+          }
+          if (progress >= 100) {
+            clearInterval(loadInterval);
+            setTimeout(() => {
+              if (loadScreen) {
+                // Smooth cross-fade: startup-screen is already sitting directly underneath, so title stays solid!
+                loadScreen.style.pointerEvents = 'none';
+                loadScreen.style.opacity = '0';
+                setTimeout(() => {
+                  loadScreen.classList.add('hidden');
+                }, 520);
+              }
+            }, 140);
+          }
+        }, 40);
       };
     })();
   </script>
