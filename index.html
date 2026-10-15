@@ -707,16 +707,39 @@
           this.enabled = true;
           this.humOsc = null;
           this.humGain = null;
+          this.noiseCache = {};
         }
         init() {
-          if (this.ctx) return;
+          if (this.ctx) {
+            if (this.ctx.state === 'suspended') {
+              this.ctx.resume().catch(() => {});
+            }
+            return;
+          }
           try {
             const AudioCtx = window.AudioContext || window.webkitAudioContext;
             this.ctx = new AudioCtx();
+            this.buildCachedNoiseBuffers();
             this.startBackroomsHum();
           } catch (e) {
             this.ctx = null;
           }
+        }
+        buildCachedNoiseBuffers() {
+          if (!this.ctx) return;
+          const sr = this.ctx.sampleRate;
+          const specs = { mp5: 0.088, pistol: 0.088, ak47: 0.13, shotgun: 0.22, explosion: 0.55 };
+          Object.keys(specs).forEach((key) => {
+            const dur = specs[key];
+            const len = Math.max(1, Math.floor(sr * dur));
+            const buf = this.ctx.createBuffer(1, len, sr);
+            const data = buf.getChannelData(0);
+            const decay = key === 'explosion' ? 0.28 : 0.30;
+            for (let i = 0; i < len; i++) {
+              data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (len * decay));
+            }
+            this.noiseCache[key] = { buffer: buf, dur };
+          });
         }
         startBackroomsHum() {
           if (!this.ctx || !this.enabled || this.humOsc) return;
@@ -754,187 +777,195 @@
           if (!this.enabled) return;
           this.init();
           if (!this.ctx) return;
-          const now = this.ctx.currentTime;
-          const vol = Math.max(0.04, 1.0 - distance / 46) * 0.27;
+          try {
+            const now = this.ctx.currentTime;
+            const vol = Math.max(0.04, 1.0 - distance / 46) * 0.27;
 
-          const dur = type === 'shotgun' ? 0.22 : (type === 'ak47' ? 0.13 : 0.088);
-          const bufferSize = Math.floor(this.ctx.sampleRate * dur);
-          const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-          const data = buffer.getChannelData(0);
-          for (let i = 0; i < bufferSize; i++) {
-            data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.30));
-          }
-          const noise = this.ctx.createBufferSource();
-          noise.buffer = buffer;
+            const cached = this.noiseCache[type] || this.noiseCache.mp5;
+            if (cached) {
+              const noise = this.ctx.createBufferSource();
+              noise.buffer = cached.buffer;
 
-          const filter = this.ctx.createBiquadFilter();
-          filter.type = 'bandpass';
-          filter.frequency.setValueAtTime(
-            type === 'shotgun' ? 560 : (type === 'ak47' ? 860 : (type === 'pistol' ? 1480 : 1220)),
-            now
-          );
-          filter.Q.value = 0.68;
+              const filter = this.ctx.createBiquadFilter();
+              filter.type = 'bandpass';
+              filter.frequency.setValueAtTime(
+                type === 'shotgun' ? 560 : (type === 'ak47' ? 860 : (type === 'pistol' ? 1480 : 1220)),
+                now
+              );
+              filter.Q.value = 0.68;
 
-          const gain = this.ctx.createGain();
-          gain.gain.setValueAtTime(vol, now);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+              const gain = this.ctx.createGain();
+              gain.gain.setValueAtTime(vol, now);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + cached.dur);
 
-          noise.connect(filter);
-          filter.connect(gain);
-          gain.connect(this.ctx.destination);
-          noise.start(now);
+              noise.connect(filter);
+              filter.connect(gain);
+              gain.connect(this.ctx.destination);
+              noise.start(now);
+            }
 
-          const punch = this.ctx.createOscillator();
-          const punchGain = this.ctx.createGain();
-          punch.type = 'triangle';
-          punch.frequency.setValueAtTime(type === 'shotgun' ? 92 : (type === 'ak47' ? 128 : 158), now);
-          punch.frequency.exponentialRampToValueAtTime(34, now + 0.078);
-          punchGain.gain.setValueAtTime(vol * 1.2, now);
-          punchGain.gain.exponentialRampToValueAtTime(0.001, now + 0.082);
-          punch.connect(punchGain);
-          punchGain.connect(this.ctx.destination);
-          punch.start(now);
-          punch.stop(now + 0.086);
+            const punch = this.ctx.createOscillator();
+            const punchGain = this.ctx.createGain();
+            punch.type = 'triangle';
+            punch.frequency.setValueAtTime(type === 'shotgun' ? 92 : (type === 'ak47' ? 128 : 158), now);
+            punch.frequency.exponentialRampToValueAtTime(34, now + 0.078);
+            punchGain.gain.setValueAtTime(vol * 1.2, now);
+            punchGain.gain.exponentialRampToValueAtTime(0.001, now + 0.082);
+            punch.connect(punchGain);
+            punchGain.connect(this.ctx.destination);
+            punch.start(now);
+            punch.stop(now + 0.086);
 
-          if (type === 'shotgun' && distance < 5) {
-            [0.20, 0.34].forEach((offset, idx) => {
-              const pOsc = this.ctx.createOscillator();
-              const pGain = this.ctx.createGain();
-              pOsc.type = 'sawtooth';
-              pOsc.frequency.setValueAtTime(idx === 0 ? 420 : 580, now + offset);
-              pGain.gain.setValueAtTime(0.07, now + offset);
-              pGain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.05);
-              pOsc.connect(pGain);
-              pGain.connect(this.ctx.destination);
-              pOsc.start(now + offset);
-              pOsc.stop(now + offset + 0.055);
-            });
-          }
+            if (type === 'shotgun' && distance < 5) {
+              [0.20, 0.34].forEach((offset, idx) => {
+                const pOsc = this.ctx.createOscillator();
+                const pGain = this.ctx.createGain();
+                pOsc.type = 'sawtooth';
+                pOsc.frequency.setValueAtTime(idx === 0 ? 420 : 580, now + offset);
+                pGain.gain.setValueAtTime(0.07, now + offset);
+                pGain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.05);
+                pOsc.connect(pGain);
+                pGain.connect(this.ctx.destination);
+                pOsc.start(now + offset);
+                pOsc.stop(now + offset + 0.055);
+              });
+            }
+          } catch (e) {}
         }
         playHitmarker(isHeadshot = false) {
           if (!this.enabled) return;
           this.init();
           if (!this.ctx) return;
-          const now = this.ctx.currentTime;
-          const osc = this.ctx.createOscillator();
-          const gain = this.ctx.createGain();
-          osc.type = 'triangle';
-          osc.frequency.setValueAtTime(isHeadshot ? 1980 : 1350, now);
-          osc.frequency.exponentialRampToValueAtTime(isHeadshot ? 880 : 520, now + 0.045);
-          gain.gain.setValueAtTime(0.24, now);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
-          osc.connect(gain);
-          gain.connect(this.ctx.destination);
-          osc.start(now);
-          osc.stop(now + 0.055);
+          try {
+            const now = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(isHeadshot ? 1980 : 1350, now);
+            osc.frequency.exponentialRampToValueAtTime(isHeadshot ? 880 : 520, now + 0.045);
+            gain.gain.setValueAtTime(0.24, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.055);
+          } catch (e) {}
         }
         playKillConfirm() {
           if (!this.enabled) return;
           this.init();
           if (!this.ctx) return;
-          const now = this.ctx.currentTime;
-          [880, 1320].forEach((freq, i) => {
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(freq, now + i * 0.06);
-            gain.gain.setValueAtTime(0.16, now + i * 0.06);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.06 + 0.22);
-            osc.connect(gain);
-            gain.connect(this.ctx.destination);
-            osc.start(now + i * 0.06);
-            osc.stop(now + i * 0.06 + 0.23);
-          });
+          try {
+            const now = this.ctx.currentTime;
+            [880, 1320].forEach((freq, i) => {
+              const osc = this.ctx.createOscillator();
+              const gain = this.ctx.createGain();
+              osc.type = 'sine';
+              osc.frequency.setValueAtTime(freq, now + i * 0.06);
+              gain.gain.setValueAtTime(0.16, now + i * 0.06);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.06 + 0.22);
+              osc.connect(gain);
+              gain.connect(this.ctx.destination);
+              osc.start(now + i * 0.06);
+              osc.stop(now + i * 0.06 + 0.23);
+            });
+          } catch (e) {}
         }
         playMantle() {
           if (!this.enabled) return;
           this.init();
           if (!this.ctx) return;
-          const now = this.ctx.currentTime;
-          const osc = this.ctx.createOscillator();
-          const gain = this.ctx.createGain();
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(75, now);
-          osc.frequency.exponentialRampToValueAtTime(145, now + 0.16);
-          gain.gain.setValueAtTime(0.14, now);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-          osc.connect(gain);
-          gain.connect(this.ctx.destination);
-          osc.start(now);
-          osc.stop(now + 0.19);
+          try {
+            const now = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(75, now);
+            osc.frequency.exponentialRampToValueAtTime(145, now + 0.16);
+            gain.gain.setValueAtTime(0.14, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.19);
+          } catch (e) {}
         }
         playReload() {
           if (!this.enabled) return;
           this.init();
           if (!this.ctx) return;
-          const now = this.ctx.currentTime;
-          [0.05, 0.45, 0.82].forEach((offset, idx) => {
-            const osc = this.ctx.createOscillator();
-            const gain = this.ctx.createGain();
-            osc.type = 'square';
-            osc.frequency.setValueAtTime(idx === 2 ? 780 : 520 + idx * 140, now + offset);
-            gain.gain.setValueAtTime(0.08, now + offset);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.04);
-            osc.connect(gain);
-            gain.connect(this.ctx.destination);
-            osc.start(now + offset);
-            osc.stop(now + offset + 0.045);
-          });
+          try {
+            const now = this.ctx.currentTime;
+            [0.05, 0.45, 0.82].forEach((offset, idx) => {
+              const osc = this.ctx.createOscillator();
+              const gain = this.ctx.createGain();
+              osc.type = 'square';
+              osc.frequency.setValueAtTime(idx === 2 ? 780 : 520 + idx * 140, now + offset);
+              gain.gain.setValueAtTime(0.08, now + offset);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.04);
+              osc.connect(gain);
+              gain.connect(this.ctx.destination);
+              osc.start(now + offset);
+              osc.stop(now + offset + 0.045);
+            });
+          } catch (e) {}
         }
         playFootstep(vol = 0.045) {
           if (!this.enabled || !this.ctx) return;
-          const now = this.ctx.currentTime;
-          const osc = this.ctx.createOscillator();
-          const gain = this.ctx.createGain();
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(92 + Math.random() * 18, now);
-          osc.frequency.exponentialRampToValueAtTime(34, now + 0.055);
-          gain.gain.setValueAtTime(vol, now);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
-          osc.connect(gain);
-          gain.connect(this.ctx.destination);
-          osc.start(now);
-          osc.stop(now + 0.065);
+          try {
+            const now = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(92 + Math.random() * 18, now);
+            osc.frequency.exponentialRampToValueAtTime(34, now + 0.055);
+            gain.gain.setValueAtTime(vol, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.065);
+          } catch (e) {}
         }
         playExplosion() {
           if (!this.enabled) return;
           this.init();
           if (!this.ctx) return;
-          const now = this.ctx.currentTime;
-          const bufferSize = this.ctx.sampleRate * 0.55;
-          const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-          const data = buffer.getChannelData(0);
-          for (let i = 0; i < bufferSize; i++) {
-            data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.28));
-          }
-          const noise = this.ctx.createBufferSource();
-          noise.buffer = buffer;
-          const filter = this.ctx.createBiquadFilter();
-          filter.type = 'lowpass';
-          filter.frequency.value = 380;
-          const gain = this.ctx.createGain();
-          gain.gain.setValueAtTime(0.45, now);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.52);
-          noise.connect(filter);
-          filter.connect(gain);
-          gain.connect(this.ctx.destination);
-          noise.start(now);
+          try {
+            const now = this.ctx.currentTime;
+            const cached = this.noiseCache.explosion;
+            if (!cached) return;
+            const noise = this.ctx.createBufferSource();
+            noise.buffer = cached.buffer;
+            const filter = this.ctx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = 380;
+            const gain = this.ctx.createGain();
+            gain.gain.setValueAtTime(0.45, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.52);
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(this.ctx.destination);
+            noise.start(now);
+          } catch (e) {}
         }
         playBuzzer(pitch = 220) {
           if (!this.enabled) return;
           this.init();
           if (!this.ctx) return;
-          const now = this.ctx.currentTime;
-          const osc = this.ctx.createOscillator();
-          const gain = this.ctx.createGain();
-          osc.type = 'sawtooth';
-          osc.frequency.setValueAtTime(pitch, now);
-          gain.gain.setValueAtTime(0.12, now);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
-          osc.connect(gain);
-          gain.connect(this.ctx.destination);
-          osc.start(now);
-          osc.stop(now + 0.36);
+          try {
+            const now = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(pitch, now);
+            gain.gain.setValueAtTime(0.12, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.36);
+          } catch (e) {}
         }
       }
 
@@ -2844,7 +2875,28 @@
 
         setLoadoutLockState(false);
 
+        // Clear any leftover projectiles, tracers, or shells from the previous round
+        state.projectiles.forEach(g => { if (g.mesh) scene.remove(g.mesh); });
+        state.projectiles.length = 0;
+        state.tracers.forEach(tr => {
+          if (tr.line) {
+            scene.remove(tr.line);
+            if (tr.line.geometry) tr.line.geometry.dispose();
+          }
+          if (tr.mat) tr.mat.dispose();
+        });
+        state.tracers.length = 0;
+
+        const btnNew = document.getElementById('btn-new-round');
+        if (btnNew) btnNew.textContent = is2v2 ? 'NEW 2v2' : 'NEW 1v1';
+        const btnRematch = document.getElementById('btn-modal-rematch');
+        if (btnRematch) btnRematch.textContent = is2v2 ? 'NEXT GULAG 2V2 (SPACE / B)' : 'NEXT GULAG 1V1 (SPACE / B)';
+
         const p = state.player;
+        if (p._autoReloadTimeout) {
+          clearTimeout(p._autoReloadTimeout);
+          p._autoReloadTimeout = null;
+        }
         p.x = 0.0;
         p.footY = 0.0;
         p.y = 1.68;
@@ -3512,22 +3564,7 @@
         document.getElementById('online-modal').classList.add('hidden');
       });
 
-      document.getElementById('btn-save-online').addEventListener('click', () => {
-        const rawName = document.getElementById('input-username').value.trim() || 'GhostActual';
-        const rawRoom = document.getElementById('input-room-code').value.trim().toUpperCase() || 'GULAG-01';
-        const chosenMode = document.getElementById('select-lobby-mode').value;
 
-        state.username = rawName;
-        state.roomCode = rawRoom;
-        state.mode = chosenMode;
-        document.getElementById('mode-select').value = chosenMode;
-        document.getElementById('hud-player-username').textContent = `[YOU] ${state.username}`;
-        setupOnlineChannel(state.roomCode);
-
-        document.getElementById('online-modal').classList.add('hidden');
-        resetPositionsForRound();
-        showCombatToast(`JOINED ROOM ${state.roomCode} (${state.mode.toUpperCase()})`);
-      });
 
       // --- 14. COMBAT, EJECTING SHELL CASINGS, BULLET DECALS & COLLISIONS ---
       function showCombatToast(msg) {
@@ -3541,11 +3578,21 @@
 
       const matBrassShell = new THREE.MeshStandardMaterial({ color: 0xd4af37, roughness: 0.2, metalness: 0.92 });
       const matShotgunHull = new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.4, metalness: 0.3 });
+      const geoShellBrass = new THREE.CylinderGeometry(0.006, 0.006, 0.028, 8);
+      const geoShellShotgun = new THREE.CylinderGeometry(0.011, 0.011, 0.055, 8);
+      const geoDecalCircle = new THREE.CircleGeometry(0.055, 8);
+      const geoSparkSmall = new THREE.SphereGeometry(0.022, 4, 4);
+      const geoBurstSpark = new THREE.SphereGeometry(0.045, 6, 6);
+      const geoBurstBlood = new THREE.SphereGeometry(0.065, 6, 6);
 
       function spawnEjectedShellCasing() {
+        while (state.shells.length >= 28) {
+          const old = state.shells.shift();
+          if (old && old.mesh) scene.remove(old.mesh);
+        }
         const isSg = (state.weaponKey === 'shotgun');
         const mesh = new THREE.Mesh(
-          new THREE.CylinderGeometry(isSg ? 0.011 : 0.006, isSg ? 0.011 : 0.006, isSg ? 0.055 : 0.028, 8),
+          isSg ? geoShellShotgun : geoShellBrass,
           isSg ? matShotgunHull : matBrassShell
         );
         const ejectOffset = new THREE.Vector3(0.18, -0.06, -0.25).applyQuaternion(camera.quaternion);
@@ -3567,13 +3614,20 @@
 
       function spawnWallImpactEffects(point, normal) {
         if (!normal) return;
+        while (state.decals.length >= 40) {
+          const old = state.decals.shift();
+          if (old) {
+            scene.remove(old.mesh);
+            if (old.mat) old.mat.dispose();
+          }
+        }
         const decalMat = new THREE.MeshBasicMaterial({
           color: 0x12110c,
           transparent: true,
           opacity: 0.85,
           depthWrite: false
         });
-        const decalMesh = new THREE.Mesh(new THREE.CircleGeometry(0.055, 8), decalMat);
+        const decalMesh = new THREE.Mesh(geoDecalCircle, decalMat);
         decalMesh.position.copy(point).add(normal.clone().multiplyScalar(0.015));
         decalMesh.lookAt(point.clone().add(normal));
         scene.add(decalMesh);
@@ -3582,7 +3636,7 @@
         // 4 Ricochet Sparks
         for (let i = 0; i < 4; i++) {
           const sMat = new THREE.MeshBasicMaterial({ color: 0xffe066, transparent: true, opacity: 0.95 });
-          const sMesh = new THREE.Mesh(new THREE.SphereGeometry(0.022, 4, 4), sMat);
+          const sMesh = new THREE.Mesh(geoSparkSmall, sMat);
           sMesh.position.copy(point);
           scene.add(sMesh);
           state.killParticles.push({
@@ -3619,7 +3673,7 @@
             transparent: true,
             opacity: 0.95
           });
-          const pMesh = new THREE.Mesh(new THREE.SphereGeometry(isSpark ? 0.045 : 0.065, 6, 6), mat);
+          const pMesh = new THREE.Mesh(isSpark ? geoBurstSpark : geoBurstBlood, mat);
           pMesh.position.copy(worldPos);
           scene.add(pMesh);
           state.killParticles.push({
@@ -3691,8 +3745,11 @@
       function triggerReload() {
         const p = state.player;
         const wpn = WEAPONS[state.weaponKey];
-        pollGamepadInput(dt);
-        if (p.reloading || p.mag >= wpn.magSize || p.reserve <= 0 || !state.roundActive || p.dying) return;
+        if (!wpn || p.reloading || p.mag >= wpn.magSize || p.reserve <= 0 || !state.roundActive || p.dying) return;
+        if (p._autoReloadTimeout) {
+          clearTimeout(p._autoReloadTimeout);
+          p._autoReloadTimeout = null;
+        }
         p.reloading = true;
         p.reloadTimer = wpn.reloadDuration;
         p.ads = false;
@@ -3729,7 +3786,12 @@
         if (state.countdownTime > 0) return;
 
         if (p.mag <= 0) {
-          triggerReload();
+          p.fireCooldown = 0.24;
+          if (p.reserve > 0) {
+            triggerReload();
+          } else {
+            showCombatToast('OUT OF AMMO!');
+          }
           return;
         }
 
@@ -3823,8 +3885,12 @@
         }
 
         updateHUD();
-        if (p.mag === 0 && p.reserve > 0) {
-          setTimeout(triggerReload, 180);
+        if (p.mag === 0 && p.reserve > 0 && !p.reloading) {
+          if (p._autoReloadTimeout) clearTimeout(p._autoReloadTimeout);
+          p._autoReloadTimeout = setTimeout(() => {
+            p._autoReloadTimeout = null;
+            triggerReload();
+          }, 180);
         }
       }
 
@@ -4463,6 +4529,10 @@
         const dt = Math.min(0.05, (now - lastFrameTime) / 1000);
         lastFrameTime = now;
 
+        try {
+          pollGamepadInput(dt);
+        } catch (err) {}
+
         const p = state.player;
         const wpn = WEAPONS[state.weaponKey];
 
@@ -4583,7 +4653,10 @@
               const specCamZ = Math.max(-16.82, Math.min(16.82, al.z));
               camera.position.set(specCamX, al.footY + 1.66 + bobY, specCamZ);
               camera.rotation.order = 'YXZ';
-              camera.rotation.y += (allyCamYaw - camera.rotation.y) * Math.min(1, dt * 16);
+              let yawDelta = allyCamYaw - camera.rotation.y;
+              while (yawDelta > Math.PI) yawDelta -= Math.PI * 2;
+              while (yawDelta < -Math.PI) yawDelta += Math.PI * 2;
+              camera.rotation.y += yawDelta * Math.min(1, dt * 16);
               camera.rotation.x = THREE.MathUtils.lerp(camera.rotation.x, -0.02 + (al.muzzleTimer > 0 ? 0.025 : 0), Math.min(1, dt * 16));
               camera.rotation.z = 0;
 
@@ -4915,6 +4988,8 @@
           tr.mat.opacity = Math.max(0, tr.life / 0.065);
           if (tr.life <= 0) {
             scene.remove(tr.line);
+            if (tr.line.geometry) tr.line.geometry.dispose();
+            if (tr.mat) tr.mat.dispose();
             state.tracers.splice(i, 1);
           }
         }
@@ -5046,16 +5121,27 @@
         applyPerformancePreset(e.target.value);
       });
 
-      // Enhance btn-save-online to transition from Setup Lobby into active 5s Countdown + 2:00 Match
+      // Unified btn-save-online handler to transition from Setup Lobby into active 5s Countdown + 2:00 Match
       document.getElementById('btn-save-online').addEventListener('click', () => {
         sfx.init();
+        const rawName = document.getElementById('input-username').value.trim() || 'GhostActual';
+        const rawRoom = document.getElementById('input-room-code').value.trim().toUpperCase() || 'GULAG-01';
+        const chosenMode = document.getElementById('select-lobby-mode').value;
         const chosenLoadout = document.getElementById('select-lobby-loadout').value;
         const chosenSkill = document.getElementById('select-lobby-skill').value;
+
         controlScheme = document.getElementById('select-control-scheme').value;
         applyPerformancePreset(document.getElementById('select-perf-mode').value);
 
+        state.username = rawName;
+        state.roomCode = rawRoom;
+        state.mode = chosenMode;
         state.difficulty = chosenSkill;
+        document.getElementById('mode-select').value = chosenMode;
         document.getElementById('difficulty-select').value = chosenSkill;
+        document.getElementById('hud-player-username').textContent = `[YOU] ${state.username}`;
+
+        setupOnlineChannel(state.roomCode);
         applySharedLoadout(chosenLoadout, true);
 
         appScreenState = 'playing';
@@ -5063,6 +5149,7 @@
         document.getElementById('online-modal').classList.add('hidden');
         updateControlSchemeVisibility();
         resetPositionsForRound();
+        showCombatToast(`JOINED ROOM ${state.roomCode} (${state.mode.toUpperCase()})`);
       });
 
       // --- iOS / CoD MOBILE MULTI-TOUCH CONTROLLER ---
