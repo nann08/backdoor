@@ -204,6 +204,78 @@
       transform-origin: center center;
     }
 
+    /* Mobile Screen-Fit HUD Rules (Safe-Area Insets + Compact Scaling so nothing clips off-screen) */
+    #game-container.mobile-hud-active #hud-top-left {
+      top: max(8px, calc(env(safe-area-inset-top, 0px) + 6px)) !important;
+      left: max(16px, calc(env(safe-area-inset-left, 0px) + 12px)) !important;
+      transform: scale(0.88);
+      transform-origin: top left;
+    }
+    #game-container.mobile-hud-active #hud-top-center {
+      top: max(8px, calc(env(safe-area-inset-top, 0px) + 6px)) !important;
+      transform: translateX(-50%) scale(0.88);
+      transform-origin: top center;
+    }
+    #game-container.mobile-hud-active #minimap-wrapper {
+      top: max(8px, calc(env(safe-area-inset-top, 0px) + 6px)) !important;
+      right: max(16px, calc(env(safe-area-inset-right, 0px) + 12px)) !important;
+      width: 82px !important;
+    }
+    #game-container.mobile-hud-active #hud-bottom-left {
+      top: max(50px, calc(env(safe-area-inset-top, 0px) + 46px)) !important;
+      left: max(16px, calc(env(safe-area-inset-left, 0px) + 12px)) !important;
+      bottom: auto !important;
+      transform: scale(0.84);
+      transform-origin: top left;
+    }
+    #game-container.mobile-hud-active #weapon-hud-container {
+      bottom: max(10px, calc(env(safe-area-inset-bottom, 0px) + 8px)) !important;
+      transform: translateX(-50%) scale(0.86);
+      transform-origin: bottom center;
+    }
+    #game-container.mobile-hud-active #codm-joy-zone {
+      bottom: max(14px, calc(env(safe-area-inset-bottom, 0px) + 10px)) !important;
+      left: max(20px, calc(env(safe-area-inset-left, 0px) + 16px)) !important;
+      width: 108px !important;
+      height: 108px !important;
+    }
+    #game-container.mobile-hud-active #codm-joy-base {
+      width: 96px !important;
+      height: 96px !important;
+    }
+    #game-container.mobile-hud-active #codm-btn-hipfire {
+      top: 28% !important;
+      left: max(22px, calc(env(safe-area-inset-left, 0px) + 16px)) !important;
+      width: 48px !important;
+      height: 48px !important;
+    }
+    #game-container.mobile-hud-active #codm-right-cluster {
+      position: absolute;
+      bottom: max(8px, calc(env(safe-area-inset-bottom, 0px) + 6px));
+      right: max(14px, calc(env(safe-area-inset-right, 0px) + 10px));
+      width: 220px;
+      height: 170px;
+      transform: scale(0.90);
+      transform-origin: bottom right;
+      pointer-events: none;
+    }
+    /* When rotated 90deg in iOS Portrait-Locked Web App mode, map portrait top/bottom safe areas to landscape left/right */
+    #game-container.webapp-landscape-rotated #hud-top-left {
+      left: max(20px, calc(env(safe-area-inset-top, 0px) + 14px)) !important;
+    }
+    #game-container.webapp-landscape-rotated #hud-bottom-left {
+      left: max(20px, calc(env(safe-area-inset-top, 0px) + 14px)) !important;
+    }
+    #game-container.webapp-landscape-rotated #codm-joy-zone {
+      left: max(24px, calc(env(safe-area-inset-top, 0px) + 18px)) !important;
+    }
+    #game-container.webapp-landscape-rotated #minimap-wrapper {
+      right: max(20px, calc(env(safe-area-inset-bottom, 0px) + 14px)) !important;
+    }
+    #game-container.webapp-landscape-rotated #codm-right-cluster {
+      right: max(18px, calc(env(safe-area-inset-bottom, 0px) + 12px)) !important;
+    }
+
     ::-webkit-scrollbar {
       display: none;
     }
@@ -222,13 +294,15 @@
     <!-- COMPACT BACK DOOR GULAG HUD -->
     <div id="hud-layer">
 
-      <!-- 1. TOP-LEFT: 2-ROW COMPACT TOOLBAR (ROW 2 UNDER GUN SELECTION TAB TO NEVER OVERLAP HEALTH BAR) -->
-      <div class="interactive-hud absolute top-2.5 left-3 flex flex-col items-start gap-1 z-20">
-        <!-- Row 1: Mode & Gun Selection Tab (Narrow, never overlaps center health bars) -->
-        <div class="flex items-center gap-1">
+      <!-- 1. TOP-LEFT: COMPACT TOOLBAR (ROW 2 UNDER GUN SELECTION TAB TO NEVER OVERLAP HEALTH BAR) -->
+      <div id="hud-top-left" class="interactive-hud absolute top-2.5 left-3 flex flex-col items-start gap-1 z-20">
+        <!-- Row 1: Mode & Gun Selection Tab -->
+        <div class="flex items-center gap-1 flex-wrap">
           <select id="mode-select" aria-label="Select Game Mode" class="bg-black/75 hover:bg-black/90 text-emerald-300 border border-emerald-400/35 rounded px-1.5 py-0.5 text-[9px] font-mono-cod cursor-pointer focus:outline-none">
-            <option value="1v1" selected>1v1 ONLINE</option>
-            <option value="2v2">2v2 ONLINE</option>
+            <option value="1v1" selected>1v1 GULAG</option>
+            <option value="2v2">2v2 GULAG</option>
+            <option value="tdm_1v1">1v1 TDM</option>
+            <option value="tdm">2v2 TDM</option>
           </select>
           <div class="relative flex items-center">
             <select id="loadout-select" aria-label="Select Gulag Loadout" title="Shared loadout for all players (Only changeable during pre-round countdown)" class="bg-black/75 hover:bg-black/90 text-amber-200 border border-amber-400/35 rounded px-1.5 py-0.5 text-[9px] font-mono-cod cursor-pointer focus:outline-none">
@@ -239,9 +313,21 @@
             </select>
             <span id="loadout-lock-badge" class="hidden ml-1 px-1 py-0.5 bg-red-900/75 border border-red-400/40 text-[8px] font-mono-cod text-red-200 rounded-xs">LOCKED</span>
           </div>
+          <!-- TDM Quick Time & Kill Limit Controls (visible when TDM is active) -->
+          <div id="hud-tdm-settings" class="hidden items-center gap-1 bg-black/75 border border-cyan-400/35 rounded px-1 py-0.5 text-[8px] font-mono-cod text-cyan-200">
+            <select id="hud-tdm-time" aria-label="TDM Time Limit" title="Team Deathmatch Time Limit" class="bg-transparent text-cyan-300 cursor-pointer focus:outline-none">
+              <option value="2">2M</option>
+              <option value="5" selected>5M</option>
+              <option value="10">10M</option>
+              <option value="free">FREE</option>
+            </select>
+            <span class="text-neutral-500">|</span>
+            <span>KILLS:</span>
+            <input id="hud-tdm-kills" type="number" min="1" max="200" value="15" title="Target Kills to Win TDM" class="w-8 bg-black/80 border border-cyan-400/40 rounded-xs px-1 text-center text-amber-300 font-bold focus:outline-none" />
+          </div>
         </div>
 
-        <!-- Row 2: Placed directly under the gun selection tab as requested! -->
+        <!-- Row 2: Placed directly under the gun selection tab -->
         <div class="flex items-center gap-1">
           <button id="btn-online-lobby" type="button" title="Open Game Setup & Room Lobby" class="bg-emerald-500/25 hover:bg-emerald-500/40 text-emerald-300 border border-emerald-400/45 rounded px-1.5 py-0.5 text-[9px] font-mono-cod cursor-pointer shadow">
             LOBBY / ROOM
@@ -263,8 +349,8 @@
         </div>
       </div>
 
-      <!-- 2. TOP-CENTER: COMPACT 1v1 / 2v2 SCOREBOARD & 2-MINUTE TIMER -->
-      <div class="absolute top-2.5 left-1/2 -translate-x-1/2 flex items-start gap-1.5 sm:gap-2 select-none">
+      <!-- 2. TOP-CENTER: COMPACT 1v1 / 2v2 / TDM SCOREBOARD & TIMER -->
+      <div id="hud-top-center" class="absolute top-2.5 left-1/2 -translate-x-1/2 flex items-start gap-1.5 sm:gap-2 select-none">
         <!-- Player Team Emblem -->
         <div class="w-6 h-6 rounded-xs bg-black/45 border border-white/20 flex items-center justify-center shadow">
           <svg class="w-4 h-4 text-neutral-200" viewBox="0 0 24 24" fill="currentColor">
@@ -292,13 +378,20 @@
           </div>
         </div>
 
-        <!-- Match Countdown Timer (02:00.0) -->
+        <!-- Match Countdown Timer & TDM Kill Scoreboard -->
         <div class="flex flex-col items-center justify-center px-1">
-          <div id="gulag-timer" class="font-cod text-sm sm:text-base font-bold text-white cod-text-shadow tracking-wider leading-none">
+          <div id="gulag-timer" class="font-cod text-sm sm:text-base font-bold text-white cod-text-shadow tracking-wider leading-none whitespace-nowrap">
             02:00.0
           </div>
           <div id="overtime-badge" class="hidden mt-0.5 px-1 py-0.2 bg-amber-500/90 text-black font-cod text-[8px] font-bold tracking-widest uppercase rounded-xs animate-pulse">
             OVERTIME FLAG
+          </div>
+          <div id="tdm-score-badge" class="hidden mt-0.5 px-1.5 py-0.2 bg-black/80 border border-amber-400/50 text-[8px] font-mono-cod text-amber-200 rounded-xs whitespace-nowrap shadow">
+            <span class="text-cyan-300 font-bold" id="tdm-ally-score">0</span>
+            <span class="text-neutral-400 mx-0.5">/</span>
+            <span class="text-amber-300 font-bold" id="tdm-target-score">15</span>
+            <span class="text-neutral-400 mx-0.5">:</span>
+            <span class="text-red-400 font-bold" id="tdm-enemy-score">0</span>
           </div>
         </div>
 
@@ -425,7 +518,7 @@
       </div>
 
       <!-- 5. BOTTOM-LEFT: PLAYER USERNAME & SWITCH PRO CONTROLLER STATUS -->
-      <div class="interactive-hud absolute bottom-2.5 left-3.5 flex items-center gap-1.5 select-none">
+      <div id="hud-bottom-left" class="interactive-hud absolute bottom-2.5 left-3.5 flex items-center gap-1.5 select-none">
         <button id="btn-edit-username" type="button" title="Click to change username" class="flex items-center gap-1.5 bg-black/55 hover:bg-black/80 border border-white/15 px-2.5 py-1 rounded-xs cursor-pointer transition">
           <span id="net-status-dot" class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
           <span id="hud-player-username" class="font-mono-cod text-[11px] font-semibold text-white cod-text-shadow tracking-tight">[YOU] GhostActual</span>
@@ -537,8 +630,10 @@
               <div>
                 <label for="select-lobby-mode" class="block text-[10px] font-mono-cod text-neutral-300 mb-1">MATCH MODE</label>
                 <select id="select-lobby-mode" class="w-full bg-black/80 border border-white/25 rounded-xs px-2 py-1.5 text-emerald-300 font-mono-cod text-[11px] focus:outline-none">
-                  <option value="1v1" selected>1v1 Duel (2:00)</option>
-                  <option value="2v2">2v2 Team (2:00)</option>
+                  <option value="1v1" selected>1v1 Gulag (2:00)</option>
+                  <option value="2v2">2v2 Gulag (2:00)</option>
+                  <option value="tdm_1v1">1v1 TDM (Respawn)</option>
+                  <option value="tdm">2v2 TDM (Respawn)</option>
                 </select>
               </div>
               <div>
@@ -557,6 +652,81 @@
                   <option value="veteran" selected>Veteran</option>
                   <option value="demon">Demon</option>
                 </select>
+              </div>
+            </div>
+
+            <!-- Team Selection & Live Lobby Roster (See who is in the lobby and who is on what team before launching!) -->
+            <div class="bg-black/75 border border-white/15 p-2.5 rounded-xs space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] font-mono-cod text-amber-300 uppercase tracking-wider font-semibold">
+                  SELECT YOUR TEAM &amp; LOBBY ROSTER
+                </span>
+                <span id="lobby-player-count-badge" class="text-[9px] font-mono-cod text-emerald-400">
+                  2 OPERATORS IN LOBBY
+                </span>
+              </div>
+
+              <!-- Team Selector Buttons -->
+              <div class="grid grid-cols-2 gap-2">
+                <button id="btn-team-alpha" type="button" class="py-1.5 px-2 rounded-xs border border-cyan-400 bg-cyan-950/60 text-cyan-200 font-mono-cod text-[10px] font-bold uppercase tracking-wider flex items-center justify-between cursor-pointer transition">
+                  <span class="flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+                    <span>TASK FORCE (ALPHA)</span>
+                  </span>
+                  <span id="badge-join-alpha" class="text-[8px] px-1 py-0.2 bg-cyan-400 text-black font-bold rounded-xs">JOINED</span>
+                </button>
+                <button id="btn-team-bravo" type="button" class="py-1.5 px-2 rounded-xs border border-red-500/35 bg-black/60 text-red-300/80 font-mono-cod text-[10px] font-bold uppercase tracking-wider flex items-center justify-between cursor-pointer transition">
+                  <span class="flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-red-500"></span>
+                    <span>SHADOW CO (BRAVO)</span>
+                  </span>
+                  <span id="badge-join-bravo" class="text-[8px] px-1 py-0.2 bg-white/10 text-neutral-300 rounded-xs">JOIN</span>
+                </button>
+              </div>
+
+              <!-- Live Team Lineup Columns -->
+              <div class="grid grid-cols-2 gap-2 pt-0.5">
+                <div class="bg-cyan-950/20 border border-cyan-500/30 rounded-xs p-2">
+                  <div class="text-[8px] font-mono-cod text-cyan-300 uppercase tracking-wider mb-1 flex items-center justify-between border-b border-cyan-500/20 pb-0.5">
+                    <span>ALPHA SQUAD</span>
+                    <span id="alpha-count-label">1/1</span>
+                  </div>
+                  <div id="lobby-roster-alpha" class="space-y-1 text-[10px] font-mono-cod"></div>
+                </div>
+                <div class="bg-red-950/20 border border-red-500/30 rounded-xs p-2">
+                  <div class="text-[8px] font-mono-cod text-red-300 uppercase tracking-wider mb-1 flex items-center justify-between border-b border-red-500/20 pb-0.5">
+                    <span>BRAVO SQUAD</span>
+                    <span id="bravo-count-label">1/1</span>
+                  </div>
+                  <div id="lobby-roster-bravo" class="space-y-1 text-[10px] font-mono-cod"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Team Deathmatch Custom Rules (Squad Size: 1v1/2v2 + Time Limit: 2, 5, 10, Free Time + Target Kills to Win) -->
+            <div id="lobby-tdm-options" class="hidden grid grid-cols-3 gap-2 bg-cyan-950/30 border border-cyan-400/40 p-2.5 rounded-xs">
+              <div>
+                <label for="select-tdm-size" class="block text-[10px] font-mono-cod text-emerald-300 mb-1">TDM FORMAT</label>
+                <select id="select-tdm-size" class="w-full bg-black/85 border border-emerald-400/45 rounded-xs px-2 py-1.5 text-emerald-200 font-mono-cod text-[11px] focus:outline-none">
+                  <option value="tdm_1v1">1v1 TDM Duel</option>
+                  <option value="tdm" selected>2v2 TDM Squad</option>
+                </select>
+              </div>
+              <div>
+                <label for="select-tdm-time" class="block text-[10px] font-mono-cod text-cyan-300 mb-1">TDM TIME LIMIT</label>
+                <select id="select-tdm-time" class="w-full bg-black/85 border border-cyan-400/45 rounded-xs px-2 py-1.5 text-cyan-200 font-mono-cod text-[11px] focus:outline-none">
+                  <option value="2">2 Minutes (02:00)</option>
+                  <option value="5" selected>5 Minutes (05:00)</option>
+                  <option value="10">10 Minutes (10:00)</option>
+                  <option value="free">Free Time (No Limit)</option>
+                </select>
+              </div>
+              <div>
+                <label for="input-tdm-kills" class="block text-[10px] font-mono-cod text-amber-300 mb-1">KILLS TO WIN</label>
+                <div class="flex items-center gap-1">
+                  <input id="input-tdm-kills" type="number" min="1" max="200" value="15" class="w-full bg-black/85 border border-amber-400/50 rounded-xs px-2 py-1.5 text-amber-200 font-mono-cod text-xs font-bold focus:outline-none focus:border-amber-300" />
+                  <span class="text-[8px] font-mono-cod text-neutral-400 shrink-0">KILLS</span>
+                </div>
               </div>
             </div>
 
@@ -629,69 +799,71 @@
           <span class="text-[8px] tracking-wider mt-0.5">HIP</span>
         </button>
 
-        <!-- Right-Side Ergonomic Arc Cluster (Generous Spacing Between Every Button) -->
-        <!-- 1. Primary Right-Thumb FIRE Button (Bullet + Crosshair Rays SVG) -->
-        <button id="codm-btn-fire" type="button" class="codm-btn pointer-events-auto absolute bg-red-900/55 border-red-400/75" style="bottom: 38px; right: 92px; width: 72px; height: 72px;">
-          <svg class="w-7 h-7 text-white" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2l2.2 4.5V15h-4.4V6.5L12 2zm-2.2 14.5h4.4V20h-4.4v-3.5zM4 11h3v2H4v-2zm13 0h3v2h-3v-2z"/>
-          </svg>
-          <span class="text-[10px] font-bold tracking-wider mt-0.5">FIRE</span>
-        </button>
+        <!-- Right-Side Ergonomic Arc Cluster (Wrapped in Safe-Area Screen-Fit Container) -->
+        <div id="codm-right-cluster">
+          <!-- 1. Primary Right-Thumb FIRE Button (Bullet + Crosshair Rays SVG) -->
+          <button id="codm-btn-fire" type="button" class="codm-btn pointer-events-auto absolute bg-red-900/55 border-red-400/75" style="bottom: 30px; right: 76px; width: 68px; height: 68px;">
+            <svg class="w-7 h-7 text-white" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2l2.2 4.5V15h-4.4V6.5L12 2zm-2.2 14.5h4.4V20h-4.4v-3.5zM4 11h3v2H4v-2zm13 0h3v2h-3v-2z"/>
+            </svg>
+            <span class="text-[10px] font-bold tracking-wider mt-0.5">FIRE</span>
+          </button>
 
-        <!-- 2. Scope / ADS Button (Optic Crosshair Reticle SVG) -->
-        <button id="codm-btn-ads" type="button" class="codm-btn pointer-events-auto absolute" style="bottom: 126px; right: 20px; width: 52px; height: 52px;">
-          <svg class="w-5 h-5 text-amber-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-            <circle cx="12" cy="12" r="7"/>
-            <line x1="12" y1="2" x2="12" y2="7"/>
-            <line x1="12" y1="17" x2="12" y2="22"/>
-            <line x1="2" y1="12" x2="7" y2="12"/>
-            <line x1="17" y1="12" x2="22" y2="12"/>
-          </svg>
-          <span class="text-[8px] tracking-wider mt-0.5">ADS</span>
-        </button>
+          <!-- 2. Scope / ADS Button (Optic Crosshair Reticle SVG) -->
+          <button id="codm-btn-ads" type="button" class="codm-btn pointer-events-auto absolute" style="bottom: 114px; right: 8px; width: 48px; height: 48px;">
+            <svg class="w-5 h-5 text-amber-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <circle cx="12" cy="12" r="7"/>
+              <line x1="12" y1="2" x2="12" y2="7"/>
+              <line x1="12" y1="17" x2="12" y2="22"/>
+              <line x1="2" y1="12" x2="7" y2="12"/>
+              <line x1="17" y1="12" x2="22" y2="12"/>
+            </svg>
+            <span class="text-[8px] tracking-wider mt-0.5">ADS</span>
+          </button>
 
-        <!-- 3. Jump / Mantle Button (Double Upward Chevron Vault SVG) -->
-        <button id="codm-btn-jump" type="button" class="codm-btn pointer-events-auto absolute" style="bottom: 68px; right: 16px; width: 48px; height: 48px;">
-          <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="17 11 12 6 7 11"/>
-            <polyline points="17 17 12 12 7 17"/>
-          </svg>
-          <span class="text-[7px] tracking-wider">JUMP</span>
-        </button>
+          <!-- 3. Jump / Mantle Button (Double Upward Chevron Vault SVG) -->
+          <button id="codm-btn-jump" type="button" class="codm-btn pointer-events-auto absolute" style="bottom: 58px; right: 4px; width: 46px; height: 46px;">
+            <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="17 11 12 6 7 11"/>
+              <polyline points="17 17 12 12 7 17"/>
+            </svg>
+            <span class="text-[7px] tracking-wider">JUMP</span>
+          </button>
 
-        <!-- 4. Crouch / Slide Button (Double Downward Chevron Slide SVG) -->
-        <button id="codm-btn-crouch" type="button" class="codm-btn pointer-events-auto absolute" style="bottom: 12px; right: 22px; width: 48px; height: 48px;">
-          <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="7 7 12 12 17 7"/>
-            <polyline points="7 13 12 18 17 13"/>
-          </svg>
-          <span class="text-[7px] tracking-wider">SLIDE</span>
-        </button>
+          <!-- 4. Crouch / Slide Button (Double Downward Chevron Slide SVG) -->
+          <button id="codm-btn-crouch" type="button" class="codm-btn pointer-events-auto absolute" style="bottom: 4px; right: 10px; width: 46px; height: 46px;">
+            <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="7 7 12 12 17 7"/>
+              <polyline points="7 13 12 18 17 13"/>
+            </svg>
+            <span class="text-[7px] tracking-wider">SLIDE</span>
+          </button>
 
-        <!-- 5. Reload Button (Circular Chamber Cycle Arrow SVG) -->
-        <button id="codm-btn-reload" type="button" class="codm-btn pointer-events-auto absolute" style="bottom: 12px; right: 180px; width: 46px; height: 46px;">
-          <svg class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 12a9 9 0 11-2.64-6.36"/>
-            <polyline points="21 3 21 9 15 9"/>
-          </svg>
-          <span class="text-[7px] tracking-wider mt-0.5">RLD</span>
-        </button>
+          <!-- 5. Reload Button (Circular Chamber Cycle Arrow SVG) -->
+          <button id="codm-btn-reload" type="button" class="codm-btn pointer-events-auto absolute" style="bottom: 4px; right: 156px; width: 44px; height: 44px;">
+            <svg class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12a9 9 0 11-2.64-6.36"/>
+              <polyline points="21 3 21 9 15 9"/>
+            </svg>
+            <span class="text-[7px] tracking-wider mt-0.5">RLD</span>
+          </button>
 
-        <!-- 6. Lethal Frag Grenade Button (Segmented Grenade Silhouette SVG) -->
-        <button id="codm-btn-frag" type="button" class="codm-btn pointer-events-auto absolute" style="bottom: 112px; right: 166px; width: 44px; height: 44px;">
-          <svg class="w-4 h-4 text-amber-200" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 6a6.5 6.5 0 00-6.5 6.5C5.5 16.09 8.41 19 12 19s6.5-2.91 6.5-6.5A6.5 6.5 0 0012 6zm-1-4h2v2h3v1.8h-2.1A6.5 6.5 0 0012 5.5c-.69 0-1.36.1-2 .28V4H8.5V2H11z"/>
-          </svg>
-          <span class="text-[7px] font-bold">FRAG</span>
-        </button>
+          <!-- 6. Lethal Frag Grenade Button (Segmented Grenade Silhouette SVG) -->
+          <button id="codm-btn-frag" type="button" class="codm-btn pointer-events-auto absolute" style="bottom: 102px; right: 146px; width: 42px; height: 42px;">
+            <svg class="w-4 h-4 text-amber-200" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 6a6.5 6.5 0 00-6.5 6.5C5.5 16.09 8.41 19 12 19s6.5-2.91 6.5-6.5A6.5 6.5 0 0012 6zm-1-4h2v2h3v1.8h-2.1A6.5 6.5 0 0012 5.5c-.69 0-1.36.1-2 .28V4H8.5V2H11z"/>
+            </svg>
+            <span class="text-[7px] font-bold">FRAG</span>
+          </button>
 
-        <!-- 7. Tactical Stun Grenade Button (Flash Canister Silhouette SVG) -->
-        <button id="codm-btn-stun" type="button" class="codm-btn pointer-events-auto absolute" style="bottom: 62px; right: 192px; width: 44px; height: 44px;">
-          <svg class="w-4 h-4 text-cyan-200" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M9 2h6v3h2v14a2 2 0 01-2 2H9a2 2 0 01-2-2V5h2V2zm2 5v9h2V7h-2z"/>
-          </svg>
-          <span class="text-[7px] font-bold">STUN</span>
-        </button>
+          <!-- 7. Tactical Stun Grenade Button (Flash Canister Silhouette SVG) -->
+          <button id="codm-btn-stun" type="button" class="codm-btn pointer-events-auto absolute" style="bottom: 54px; right: 168px; width: 42px; height: 42px;">
+            <svg class="w-4 h-4 text-cyan-200" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M9 2h6v3h2v14a2 2 0 01-2 2H9a2 2 0 01-2-2V5h2V2zm2 5v9h2V7h-2z"/>
+            </svg>
+            <span class="text-[7px] font-bold">STUN</span>
+          </button>
+        </div>
       </div>
 
       <!-- 8. END-OF-ROUND VICTORY / DEFEAT BANNER MODAL -->
@@ -1008,6 +1180,30 @@
             gain.connect(this.ctx.destination);
             osc.start(now);
             osc.stop(now + 0.36);
+          } catch (e) {}
+        }
+        playTimerBeep(secondsLeft = 4) {
+          if (!this.enabled) return;
+          this.init();
+          if (!this.ctx) return;
+          try {
+            const now = this.ctx.currentTime;
+            // Escalating anticipation pitch for last 4 seconds (4 -> 3 -> 2 -> 1)
+            const freqMap = { 4: 680, 3: 760, 2: 860, 1: 1020 };
+            const baseFreq = freqMap[secondsLeft] || 760;
+            const pulses = secondsLeft === 1 ? [0, 0.11] : [0];
+            pulses.forEach((offset) => {
+              const osc = this.ctx.createOscillator();
+              const gain = this.ctx.createGain();
+              osc.type = 'sine';
+              osc.frequency.setValueAtTime(baseFreq, now + offset);
+              gain.gain.setValueAtTime(0.16, now + offset);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.085);
+              osc.connect(gain);
+              gain.connect(this.ctx.destination);
+              osc.start(now + offset);
+              osc.stop(now + offset + 0.09);
+            });
           } catch (e) {}
         }
       }
@@ -2559,7 +2755,15 @@
 
       // --- 9. GAME STATE ---
       const state = {
-        mode: '1v1',
+        mode: '1v1',             // '1v1' | '2v2' | 'tdm_1v1' | 'tdm'
+        playerTeam: 'alpha',     // 'alpha' (Task Force 141) | 'bravo' (Shadow Company)
+        peerLobbyInfo: null,     // { username, team, lastSeen }
+        tdmTimeOption: '5',      // '2' | '5' | '10' | 'free'
+        tdmTargetKills: 15,      // Number of team kills required to win TDM
+        tdmAllyKills: 0,
+        tdmEnemyKills: 0,
+        lastMatchBeepSec: -1,
+        lastFlagBeepSec: -1,
         username: 'GhostActual',
         roomCode: 'GULAG-01',
         mouseSensMult: 1.0,
@@ -2758,8 +2962,168 @@
         }
       });
 
+      function isTdmMode(m = state.mode) {
+        return m === 'tdm' || m === 'tdm_1v1';
+      }
+
+      function is2v2SquadMode(m = state.mode) {
+        return m === '2v2' || m === 'tdm';
+      }
+
+      function setPlayerTeamSelection(team, broadcast = true) {
+        state.playerTeam = (team === 'bravo') ? 'bravo' : 'alpha';
+        const btnAlpha = document.getElementById('btn-team-alpha');
+        const btnBravo = document.getElementById('btn-team-bravo');
+        const badgeAlpha = document.getElementById('badge-join-alpha');
+        const badgeBravo = document.getElementById('badge-join-bravo');
+
+        if (btnAlpha && btnBravo && badgeAlpha && badgeBravo) {
+          if (state.playerTeam === 'alpha') {
+            btnAlpha.className = 'py-1.5 px-2 rounded-xs border border-cyan-400 bg-cyan-950/60 text-cyan-200 font-mono-cod text-[10px] font-bold uppercase tracking-wider flex items-center justify-between cursor-pointer transition shadow';
+            badgeAlpha.className = 'text-[8px] px-1 py-0.2 bg-cyan-400 text-black font-bold rounded-xs';
+            badgeAlpha.textContent = 'JOINED';
+
+            btnBravo.className = 'py-1.5 px-2 rounded-xs border border-red-500/35 bg-black/60 text-red-300/80 font-mono-cod text-[10px] font-bold uppercase tracking-wider flex items-center justify-between cursor-pointer transition';
+            badgeBravo.className = 'text-[8px] px-1 py-0.2 bg-white/10 text-neutral-300 rounded-xs';
+            badgeBravo.textContent = 'JOIN';
+          } else {
+            btnBravo.className = 'py-1.5 px-2 rounded-xs border border-red-400 bg-red-950/60 text-red-200 font-mono-cod text-[10px] font-bold uppercase tracking-wider flex items-center justify-between cursor-pointer transition shadow';
+            badgeBravo.className = 'text-[8px] px-1 py-0.2 bg-red-400 text-black font-bold rounded-xs';
+            badgeBravo.textContent = 'JOINED';
+
+            btnAlpha.className = 'py-1.5 px-2 rounded-xs border border-cyan-500/35 bg-black/60 text-cyan-300/80 font-mono-cod text-[10px] font-bold uppercase tracking-wider flex items-center justify-between cursor-pointer transition';
+            badgeAlpha.className = 'text-[8px] px-1 py-0.2 bg-white/10 text-neutral-300 rounded-xs';
+            badgeAlpha.textContent = 'JOIN';
+          }
+        }
+        renderLobbyRoster();
+        if (broadcast) {
+          broadcastLobbyPresence();
+        }
+      }
+
+      function broadcastLobbyPresence() {
+        const callsignEl = document.getElementById('input-username');
+        const curName = (callsignEl && callsignEl.value.trim()) ? callsignEl.value.trim() : state.username;
+        sendNetworkPayload({
+          type: 'lobby_presence',
+          username: curName,
+          team: state.playerTeam,
+          mode: document.getElementById('select-lobby-mode') ? document.getElementById('select-lobby-mode').value : state.mode
+        });
+      }
+
+      function renderLobbyRoster() {
+        const alphaList = document.getElementById('lobby-roster-alpha');
+        const bravoList = document.getElementById('lobby-roster-bravo');
+        const alphaCountLbl = document.getElementById('alpha-count-label');
+        const bravoCountLbl = document.getElementById('bravo-count-label');
+        const totalBadge = document.getElementById('lobby-player-count-badge');
+        if (!alphaList || !bravoList) return;
+
+        const lobbyMode = document.getElementById('select-lobby-mode') ? document.getElementById('select-lobby-mode').value : state.mode;
+        const skillVal = document.getElementById('select-lobby-skill') ? document.getElementById('select-lobby-skill').value.toUpperCase() : state.difficulty.toUpperCase();
+        const callsignEl = document.getElementById('input-username');
+        const myName = (callsignEl && callsignEl.value.trim()) ? callsignEl.value.trim() : state.username;
+        const slotsPerTeam = is2v2SquadMode(lobbyMode) ? 2 : 1;
+
+        const alphaMembers = [];
+        const bravoMembers = [];
+
+        // 1. Place local player on their chosen team
+        const myEntry = {
+          name: `[YOU] ${myName}`,
+          role: 'READY',
+          isHuman: true,
+          isSelf: true
+        };
+        if (state.playerTeam === 'alpha') alphaMembers.push(myEntry);
+        else bravoMembers.push(myEntry);
+
+        // 2. Place connected online peer (if present in room)
+        const hasPeer = Boolean(state.peerLobbyInfo && (Date.now() - state.peerLobbyInfo.lastSeen < 15000));
+        if (hasPeer) {
+          const peerEntry = {
+            name: `[ONLINE] ${state.peerLobbyInfo.username}`,
+            role: 'ONLINE PEER',
+            isHuman: true,
+            isSelf: false
+          };
+          const peerTeam = state.peerLobbyInfo.team || (state.playerTeam === 'alpha' ? 'bravo' : 'alpha');
+          if (peerTeam === 'alpha' && alphaMembers.length < slotsPerTeam) {
+            alphaMembers.push(peerEntry);
+          } else if (peerTeam === 'bravo' && bravoMembers.length < slotsPerTeam) {
+            bravoMembers.push(peerEntry);
+          } else if (alphaMembers.length < slotsPerTeam) {
+            alphaMembers.push(peerEntry);
+          } else if (bravoMembers.length < slotsPerTeam) {
+            bravoMembers.push(peerEntry);
+          }
+        }
+
+        // 3. Fill remaining team slots with named tactical bots
+        const alphaBots = ['[BOT] SoapMac', '[BOT] GazPrice'];
+        const bravoBots = ['[BOT] SmokeRat79', '[BOT] ViperKilla'];
+        let aBotIdx = 0;
+        while (alphaMembers.length < slotsPerTeam) {
+          alphaMembers.push({
+            name: alphaBots[aBotIdx++ % alphaBots.length],
+            role: `BOT • ${skillVal}`,
+            isHuman: false,
+            isSelf: false
+          });
+        }
+        let bBotIdx = 0;
+        while (bravoMembers.length < slotsPerTeam) {
+          bravoMembers.push({
+            name: bravoBots[bBotIdx++ % bravoBots.length],
+            role: `BOT • ${skillVal}`,
+            isHuman: false,
+            isSelf: false
+          });
+        }
+
+        const renderSlot = (m, isAlpha) => `
+          <div class="flex items-center justify-between px-1.5 py-1 rounded-xs ${m.isSelf ? (isAlpha ? 'bg-cyan-500/20 border border-cyan-400/50' : 'bg-red-500/20 border border-red-400/50') : 'bg-black/55 border border-white/10'}">
+            <span class="flex items-center gap-1.5 truncate">
+              <span class="w-1.5 h-1.5 rounded-full ${m.isHuman ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400/80'}"></span>
+              <span class="${m.isSelf ? 'text-white font-bold' : 'text-neutral-200'} truncate">${m.name}</span>
+            </span>
+            <span class="text-[8px] px-1 py-0.2 rounded-xs ${m.isHuman ? 'bg-emerald-950/90 text-emerald-300 border border-emerald-400/40' : 'bg-neutral-900 text-neutral-400'} shrink-0 ml-1">${m.role}</span>
+          </div>
+        `;
+
+        alphaList.innerHTML = alphaMembers.map(m => renderSlot(m, true)).join('');
+        bravoList.innerHTML = bravoMembers.map(m => renderSlot(m, false)).join('');
+        if (alphaCountLbl) alphaCountLbl.textContent = `${alphaMembers.length}/${slotsPerTeam}`;
+        if (bravoCountLbl) bravoCountLbl.textContent = `${bravoMembers.length}/${slotsPerTeam}`;
+        if (totalBadge) {
+          const humanCount = 1 + (hasPeer ? 1 : 0);
+          const totalOps = slotsPerTeam * 2;
+          totalBadge.textContent = `${totalOps} OPERATORS (${humanCount} HUMAN, ${totalOps - humanCount} BOT)`;
+        }
+      }
+
       function handleIncomingNetworkPayload(msg) {
-        if (!msg || !state.roundActive) return;
+        if (!msg) return;
+        if (msg.type === 'lobby_presence') {
+          state.peerLobbyInfo = {
+            username: msg.username || 'PeerOp',
+            team: msg.team || 'bravo',
+            lastSeen: Date.now()
+          };
+          renderLobbyRoster();
+          return;
+        }
+        if (msg.type === 'peer_disconnect') {
+          state.peerLobbyInfo = null;
+          renderLobbyRoster();
+          if (state.roundActive) {
+            showOpponentDisconnectNotice(msg.username || 'PeerOp');
+          }
+          return;
+        }
+        if (!state.roundActive) return;
         if (msg.type === 'peer_state' && state.enemies[0].hp > 0 && !state.enemies[0].dying) {
           const e1 = state.enemies[0];
           e1.isRemotePeer = true;
@@ -2771,8 +3135,6 @@
           document.getElementById('enemy-name-label').textContent = e1.name;
         } else if (msg.type === 'peer_loadout' && state.countdownTime > 0) {
           applySharedLoadout(msg.weaponKey, false);
-        } else if (msg.type === 'peer_disconnect') {
-          showOpponentDisconnectNotice(msg.username || 'PeerOp');
         } else if (msg.type === 'peer_hit' && !state.player.dying) {
           state.player.hp = Math.max(0, state.player.hp - msg.dmg);
           flashDamageOverlay();
@@ -2903,20 +3265,72 @@
       }
 
       // --- 11. ROUND RESET & INITIALIZATION ---
+      function syncTdmUIControls() {
+        const isTDM = isTdmMode(state.mode);
+        const hudTdm = document.getElementById('hud-tdm-settings');
+        if (hudTdm) {
+          hudTdm.classList.toggle('hidden', !isTDM);
+          hudTdm.classList.toggle('flex', isTDM);
+        }
+        const lobbyModeEl = document.getElementById('select-lobby-mode');
+        const lobbyModeVal = lobbyModeEl ? lobbyModeEl.value : state.mode;
+        const lobbyIsTDM = isTdmMode(lobbyModeVal);
+
+        const lobbyTdm = document.getElementById('lobby-tdm-options');
+        if (lobbyTdm) {
+          lobbyTdm.classList.toggle('hidden', !lobbyIsTDM);
+        }
+        const tdmSizeSel = document.getElementById('select-tdm-size');
+        if (tdmSizeSel && lobbyIsTDM) {
+          tdmSizeSel.value = (lobbyModeVal === 'tdm_1v1') ? 'tdm_1v1' : 'tdm';
+        }
+        const scoreBadge = document.getElementById('tdm-score-badge');
+        if (scoreBadge) {
+          scoreBadge.classList.toggle('hidden', !isTDM);
+        }
+        const saveBtn = document.getElementById('btn-save-online');
+        if (saveBtn) {
+          if (lobbyIsTDM) {
+            const tOpt = document.getElementById('select-tdm-time') ? document.getElementById('select-tdm-time').value : state.tdmTimeOption;
+            const kOpt = document.getElementById('input-tdm-kills') ? document.getElementById('input-tdm-kills').value : state.tdmTargetKills;
+            const sizeTag = lobbyModeVal === 'tdm_1v1' ? '1v1 TDM' : '2v2 TDM';
+            saveBtn.textContent = `APPLY & LAUNCH ${sizeTag} (${tOpt === 'free' ? 'FREE TIME' : tOpt + ':00'} • ${kOpt} KILLS)`;
+          } else {
+            saveBtn.textContent = `APPLY & LAUNCH ${lobbyModeVal.toUpperCase()} MATCH (2:00)`;
+          }
+        }
+        renderLobbyRoster();
+      }
+
       function resetPositionsForRound() {
         const wpn = WEAPONS[state.weaponKey];
-        const is2v2 = (state.mode === '2v2');
+        const isTDM = isTdmMode(state.mode);
+        const is2v2 = is2v2SquadMode(state.mode);
+        const teamSign = (state.playerTeam === 'bravo') ? -1 : 1; // +1 = South (Alpha), -1 = North (Bravo)
 
         state.roundActive = true;
         state.countdownTime = 5.0; // 5-second lockdown: free mouse look, movement disabled!
-        state.roundTime = 120.0;
+        if (isTDM) {
+          state.roundTime = state.tdmTimeOption === 'free' ? Infinity : (parseInt(state.tdmTimeOption, 10) || 5) * 60.0;
+        } else {
+          state.roundTime = 120.0;
+        }
+        state.tdmAllyKills = 0;
+        state.tdmEnemyKills = 0;
+        state.lastMatchBeepSec = -1;
+        state.lastFlagBeepSec = -1;
         state.overtimeActive = false;
         state.flagProgress = 0;
         state.shotsFired = 0;
         state.shotsHit = 0;
         state.damageDealt = 0;
 
+        flagGroup.visible = !isTDM;
+        syncTdmUIControls();
         setLoadoutLockState(false);
+
+        const teamPrefix = state.playerTeam === 'bravo' ? '[SHDW]' : '[TF141]';
+        document.getElementById('hud-player-username').textContent = `${teamPrefix} ${state.username}`;
 
         // Clear any leftover projectiles, tracers, or shells from the previous round
         state.projectiles.forEach(g => { if (g.mesh) scene.remove(g.mesh); });
@@ -2930,10 +3344,11 @@
         });
         state.tracers.length = 0;
 
+        const modeLabel = state.mode === 'tdm_1v1' ? '1v1 TDM' : (isTDM ? '2v2 TDM' : (is2v2 ? '2v2' : '1v1'));
         const btnNew = document.getElementById('btn-new-round');
-        if (btnNew) btnNew.textContent = is2v2 ? 'NEW 2v2' : 'NEW 1v1';
+        if (btnNew) btnNew.textContent = `NEW ${modeLabel}`;
         const btnRematch = document.getElementById('btn-modal-rematch');
-        if (btnRematch) btnRematch.textContent = is2v2 ? 'NEXT GULAG 2V2 (SPACE / B)' : 'NEXT GULAG 1V1 (SPACE / B)';
+        if (btnRematch) btnRematch.textContent = `NEXT ${modeLabel} MATCH (SPACE / B)`;
 
         const p = state.player;
         if (p._autoReloadTimeout) {
@@ -2943,11 +3358,11 @@
         p.x = 0.0;
         p.footY = 0.0;
         p.y = 1.68;
-        p.z = 14.3;
+        p.z = 14.3 * teamSign;
         p.vx = 0;
         p.vy = 0;
         p.vz = 0;
-        p.yaw = 0.0;
+        p.yaw = (teamSign === 1) ? 0.0 : Math.PI;
         p.pitch = -0.015;
         p.lean = 0;
         p.hp = 100;
@@ -2980,21 +3395,36 @@
 
         applySharedLoadout(state.weaponKey, false);
 
+        if (state.player._respawnTimer) {
+          clearTimeout(state.player._respawnTimer);
+          state.player._respawnTimer = null;
+        }
+        state.enemies.forEach(en => {
+          if (en._respawnTimer) {
+            clearTimeout(en._respawnTimer);
+            en._respawnTimer = null;
+          }
+        });
+        if (state.ally._respawnTimer) {
+          clearTimeout(state.ally._respawnTimer);
+          state.ally._respawnTimer = null;
+        }
+
         const e1 = state.enemies[0];
         e1.active = true;
         e1.dying = false;
         e1.deathTimer = 0;
         e1.hp = 100;
-        e1.x = 1.25;
+        e1.x = 1.25 * teamSign;
         e1.footY = 0;
-        e1.z = -7.8;
-        e1.yaw = 0;
+        e1.z = -7.8 * teamSign;
+        e1.yaw = (teamSign === 1) ? 0 : Math.PI;
         e1.aiTimer = 0.2;
         e1.burstCooldown = 0.7;
         e1.burstRemaining = 0;
         e1.stunnedTimer = 0;
         e1.rig.root.visible = true;
-        e1.rig.root.rotation.set(0, 0, 0);
+        e1.rig.root.rotation.set(0, e1.yaw, 0);
         e1.rig.root.position.set(e1.x, 0, e1.z);
 
         const e2 = state.enemies[1];
@@ -3002,16 +3432,16 @@
         e2.dying = false;
         e2.deathTimer = 0;
         e2.hp = is2v2 ? 100 : 0;
-        e2.x = -3.1;
+        e2.x = -3.1 * teamSign;
         e2.footY = 0;
-        e2.z = -12.2;
-        e2.yaw = 0;
+        e2.z = -12.2 * teamSign;
+        e2.yaw = (teamSign === 1) ? 0 : Math.PI;
         e2.aiTimer = 0.3;
         e2.burstCooldown = 0.9;
         e2.burstRemaining = 0;
         e2.stunnedTimer = 0;
         e2.rig.root.visible = is2v2;
-        e2.rig.root.rotation.set(0, 0, 0);
+        e2.rig.root.rotation.set(0, e2.yaw, 0);
         e2.rig.root.position.set(e2.x, 0, e2.z);
 
         const al = state.ally;
@@ -3019,17 +3449,17 @@
         al.dying = false;
         al.deathTimer = 0;
         al.hp = is2v2 ? 100 : 0;
-        al.x = -2.6;
+        al.x = -2.6 * teamSign;
         al.footY = 0;
-        al.z = 13.2;
-        al.yaw = Math.PI;
+        al.z = 13.2 * teamSign;
+        al.yaw = (teamSign === 1) ? Math.PI : 0;
         al.aiTimer = 0.15;
         al.burstCooldown = 0.45;
         al.burstRemaining = 0;
         al.strafeDir = 1;
         al.bobPhase = 0;
         al.rig.root.visible = is2v2;
-        al.rig.root.rotation.set(0, Math.PI, 0);
+        al.rig.root.rotation.set(0, al.yaw, 0);
         al.rig.root.position.set(al.x, 0, al.z);
 
         document.getElementById('ally-hp-row').classList.toggle('hidden', !is2v2);
@@ -3266,8 +3696,10 @@
               applySharedLoadout(loadouts[prevIdx], true);
               showCombatToast(`SHARED LOADOUT: ${WEAPONS[state.weaponKey].name}`);
             } else if (btnJustPressed(12)) {
-              state.mode = (state.mode === '1v1') ? '2v2' : '1v1';
+              const modes = ['1v1', '2v2', 'tdm_1v1', 'tdm'];
+              state.mode = modes[(modes.indexOf(state.mode) + 1) % modes.length];
               document.getElementById('mode-select').value = state.mode;
+              document.getElementById('select-lobby-mode').value = state.mode;
               resetPositionsForRound();
               showCombatToast(`SWITCHED TO ${state.mode.toUpperCase()} MODE`);
             }
@@ -3365,9 +3797,15 @@
               p.pitch = Math.max(-1.42, Math.min(1.42, p.pitch - gamepadState.lookY * pitchSpeed * dt + rotAssistPitch));
             }
 
-            // L3 (button 10) or full forward tilt engages sprint
+            // L3 (button 10) or full forward tilt engages sprint and takes you out of crouching
             if (btnJustPressed(10)) {
               gamepadState.sprintLock = !gamepadState.sprintLock;
+              if (gamepadState.sprintLock && p.crouching && !p.sliding) {
+                p.crouching = false;
+              }
+            }
+            if (gamepadState.moveY > 0.80 && p.crouching && !p.sliding) {
+              p.crouching = false;
             }
             if (gamepadState.moveY < 0.25) {
               gamepadState.sprintLock = false;
@@ -3470,6 +3908,9 @@
             state.player.ads = !state.player.ads;
           }
         }
+        if (e.code === 'ShiftLeft' && state.player.crouching && !state.player.sliding) {
+          state.player.crouching = false;
+        }
         if (e.code === 'KeyG' || e.code === 'Digit4') throwGrenade('frag');
         if (e.code === 'KeyE' || e.code === 'Digit3') throwGrenade('stun');
         if ((e.code === 'KeyC' || e.code === 'ControlLeft') && state.countdownTime <= 0) {
@@ -3553,8 +3994,76 @@
       document.getElementById('mode-select').addEventListener('change', (e) => {
         state.mode = e.target.value;
         document.getElementById('select-lobby-mode').value = state.mode;
+        syncTdmUIControls();
         resetPositionsForRound();
-        showCombatToast(`SWITCHED TO ${state.mode.toUpperCase()} ONLINE MODE`);
+        showCombatToast(`SWITCHED TO ${state.mode.toUpperCase()} MODE`);
+      });
+
+      document.getElementById('select-lobby-mode').addEventListener('change', () => {
+        syncTdmUIControls();
+        broadcastLobbyPresence();
+      });
+
+      document.getElementById('select-tdm-size').addEventListener('change', (e) => {
+        const lobbyModeEl = document.getElementById('select-lobby-mode');
+        if (lobbyModeEl) {
+          lobbyModeEl.value = e.target.value;
+        }
+        syncTdmUIControls();
+        broadcastLobbyPresence();
+      });
+
+      document.getElementById('btn-team-alpha').addEventListener('click', () => {
+        sfx.init();
+        setPlayerTeamSelection('alpha', true);
+      });
+
+      document.getElementById('btn-team-bravo').addEventListener('click', () => {
+        sfx.init();
+        setPlayerTeamSelection('bravo', true);
+      });
+
+      document.getElementById('input-username').addEventListener('input', () => {
+        renderLobbyRoster();
+        broadcastLobbyPresence();
+      });
+
+      document.getElementById('select-tdm-time').addEventListener('change', (e) => {
+        state.tdmTimeOption = e.target.value;
+        const hudTime = document.getElementById('hud-tdm-time');
+        if (hudTime) hudTime.value = state.tdmTimeOption;
+        syncTdmUIControls();
+      });
+
+      document.getElementById('input-tdm-kills').addEventListener('input', (e) => {
+        const val = Math.max(1, Math.min(200, parseInt(e.target.value, 10) || 15));
+        state.tdmTargetKills = val;
+        const hudKills = document.getElementById('hud-tdm-kills');
+        if (hudKills) hudKills.value = String(val);
+        syncTdmUIControls();
+        updateHUD();
+      });
+
+      document.getElementById('hud-tdm-time').addEventListener('change', (e) => {
+        state.tdmTimeOption = e.target.value;
+        const lobbyTime = document.getElementById('select-tdm-time');
+        if (lobbyTime) lobbyTime.value = state.tdmTimeOption;
+        syncTdmUIControls();
+        if (isTdmMode(state.mode)) {
+          resetPositionsForRound();
+          showCombatToast(`TDM TIME LIMIT: ${state.tdmTimeOption === 'free' ? 'FREE TIME' : state.tdmTimeOption + ' MINUTES'}`);
+        }
+      });
+
+      document.getElementById('hud-tdm-kills').addEventListener('change', (e) => {
+        const val = Math.max(1, Math.min(200, parseInt(e.target.value, 10) || 15));
+        e.target.value = String(val);
+        state.tdmTargetKills = val;
+        const lobbyKills = document.getElementById('input-tdm-kills');
+        if (lobbyKills) lobbyKills.value = String(val);
+        syncTdmUIControls();
+        updateHUD();
+        showCombatToast(`TDM TARGET SCORE: ${val} KILLS`);
       });
 
       document.getElementById('loadout-select').addEventListener('change', (e) => {
@@ -3600,6 +4109,8 @@
           try { document.exitPointerLock(); } catch (e) {}
         }
         document.getElementById('online-modal').classList.remove('hidden');
+        setPlayerTeamSelection(state.playerTeam, true);
+        syncTdmUIControls();
       }
       document.getElementById('btn-online-lobby').addEventListener('click', openOnlineModal);
       document.getElementById('btn-edit-username').addEventListener('click', openOnlineModal);
@@ -3627,6 +4138,17 @@
       const geoSparkSmall = new THREE.SphereGeometry(0.022, 4, 4);
       const geoBurstSpark = new THREE.SphereGeometry(0.045, 6, 6);
       const geoBurstBlood = new THREE.SphereGeometry(0.065, 6, 6);
+      const geoGrenadeSphere = new THREE.SphereGeometry(0.11, 10, 10);
+      const matFragGrenade = new THREE.MeshStandardMaterial({ color: 0x3a4d2c, emissive: 0x7f1d1d });
+      const matStunGrenade = new THREE.MeshStandardMaterial({ color: 0xd4d4d8, emissive: 0x1e3a8a });
+
+      // Pre-cached static wall meshes & reusable raycasters to eliminate per-shot and per-AI-frame allocations
+      const cachedWallMeshes = wallColliders.map(c => c.mesh).filter(Boolean);
+      const sharedPlayerRaycaster = new THREE.Raycaster();
+      const sharedLosRaycaster = new THREE.Raycaster();
+      const scratchVec2 = new THREE.Vector2();
+      const scratchOrigin = new THREE.Vector3();
+      const scratchDir = new THREE.Vector3();
 
       function spawnEjectedShellCasing() {
         while (state.shells.length >= 28) {
@@ -3730,15 +4252,196 @@
         }
       }
 
-      function triggerOperatorDeath(operator) {
+      // 12 Distributed Anti-Spawn-Trap Spawn Points across all corners, flanks, partitions & 2F catwalks
+      const ARENA_SPAWN_POINTS = [
+        { x: -6.8, z: 14.3, footY: 0.0, zone: 'SW CORNER' },
+        { x: 0.0,  z: 14.5, footY: 0.0, zone: 'SOUTH SPAWN' },
+        { x: 6.8,  z: 14.3, footY: 0.0, zone: 'SE CORNER' },
+        { x: -6.8, z: -14.3, footY: 0.0, zone: 'NW CORNER' },
+        { x: 0.0,  z: -14.5, footY: 0.0, zone: 'NORTH SPAWN' },
+        { x: 6.8,  z: -14.3, footY: 0.0, zone: 'NE CORNER' },
+        { x: -5.8, z: 6.6,  footY: 0.0, zone: 'SW PARTITION' },
+        { x: 5.8,  z: 6.6,  footY: 0.0, zone: 'SE PARTITION' },
+        { x: -5.8, z: -6.6, footY: 0.0, zone: 'NW PARTITION' },
+        { x: 5.8,  z: -6.6, footY: 0.0, zone: 'NE PARTITION' },
+        { x: -8.6, z: 0.0,  footY: UPPER_Y, zone: '2F WEST CATWALK' },
+        { x: 8.6,  z: 0.0,  footY: UPPER_Y, zone: '2F EAST CATWALK' }
+      ];
+
+      function pickSafeSpawnPoint(forEnemy = false) {
+        const p = state.player;
+        const hostiles = [];
+        const friendlies = [];
+
+        if (forEnemy) {
+          if (!p.dying && p.hp > 0) hostiles.push(p);
+          if (state.ally.active && !state.ally.dying && state.ally.hp > 0) hostiles.push(state.ally);
+          state.enemies.forEach(e => {
+            if (e.active && !e.dying && e.hp > 0) friendlies.push(e);
+          });
+        } else {
+          state.enemies.forEach(e => {
+            if (e.active && !e.dying && e.hp > 0) hostiles.push(e);
+          });
+          if (!p.dying && p.hp > 0) friendlies.push(p);
+          if (state.ally.active && !state.ally.dying && state.ally.hp > 0) friendlies.push(state.ally);
+        }
+
+        let bestSp = ARENA_SPAWN_POINTS[0];
+        let bestScore = -Infinity;
+
+        for (let i = 0; i < ARENA_SPAWN_POINTS.length; i++) {
+          const sp = ARENA_SPAWN_POINTS[i];
+          let minHostileDist = 999;
+          let exposedToHostile = false;
+
+          for (let h = 0; h < hostiles.length; h++) {
+            const hos = hostiles[h];
+            const d = Math.hypot(sp.x - hos.x, sp.z - hos.z);
+            if (d < minHostileDist) minHostileDist = d;
+            if (d < 22 && hasLineOfSight(sp.x, sp.footY + 1.5, sp.z, hos.x, (hos.footY || 0) + 1.5, hos.z)) {
+              exposedToHostile = true;
+            }
+          }
+
+          let minFriendlyDist = 999;
+          for (let f = 0; f < friendlies.length; f++) {
+            const fr = friendlies[f];
+            const d = Math.hypot(sp.x - fr.x, sp.z - fr.z);
+            if (d < minFriendlyDist) minFriendlyDist = d;
+          }
+
+          // Strongly penalize any spawn point with direct enemy line-of-sight or close enemy proximity
+          let score = Math.min(minHostileDist, 26) * 2.2;
+          if (!exposedToHostile) score += 35.0;
+          if (minHostileDist < 7.5) score -= 50.0;
+          if (minFriendlyDist < 2.2) score -= 18.0;
+          score += (Math.random() - 0.5) * 4.5;
+
+          if (score > bestScore) {
+            bestScore = score;
+            bestSp = sp;
+          }
+        }
+
+        const jitterX = (Math.random() - 0.5) * 0.7;
+        const jitterZ = (Math.random() - 0.5) * 0.7;
+        const finalX = Math.max(-9.6, Math.min(9.6, bestSp.x + jitterX));
+        const finalZ = Math.max(-15.5, Math.min(15.5, bestSp.z + jitterZ));
+        // Face toward the center of the arena on spawn
+        const lookAtCenterPlayerYaw = Math.atan2(finalX, finalZ);
+        const lookAtCenterOperatorYaw = Math.atan2(-finalX, -finalZ);
+
+        return {
+          x: finalX,
+          z: finalZ,
+          footY: bestSp.footY,
+          zone: bestSp.zone,
+          playerYaw: lookAtCenterPlayerYaw,
+          operatorYaw: lookAtCenterOperatorYaw
+        };
+      }
+
+      function respawnEnemyOperator(operator, idx = 0) {
+        if (!state.roundActive || !isTdmMode(state.mode)) return;
+        const sp = pickSafeSpawnPoint(true);
+        operator.dying = false;
+        operator.deathTimer = 0;
+        operator.hp = 100;
+        operator.x = sp.x;
+        operator.z = sp.z;
+        operator.footY = sp.footY;
+        operator.yaw = sp.operatorYaw;
+        operator.stunnedTimer = 0;
+        operator.burstCooldown = 0.55;
+        operator.rig.root.visible = true;
+        operator.rig.root.rotation.set(0, operator.yaw, 0);
+        operator.rig.root.position.set(operator.x, operator.footY, operator.z);
+        updateHUD();
+      }
+
+      function respawnAllyOperator() {
+        const al = state.ally;
+        if (!state.roundActive || !isTdmMode(state.mode) || !al.active) return;
+        const sp = pickSafeSpawnPoint(false);
+        al.dying = false;
+        al.deathTimer = 0;
+        al.hp = 100;
+        al.x = sp.x;
+        al.z = sp.z;
+        al.footY = sp.footY;
+        al.yaw = sp.operatorYaw;
+        al.burstCooldown = 0.45;
+        al.rig.root.visible = true;
+        al.rig.root.rotation.set(0, al.yaw, 0);
+        al.rig.root.position.set(al.x, al.footY, al.z);
+        updateHUD();
+      }
+
+      function respawnPlayerForTDM() {
+        const p = state.player;
+        if (!state.roundActive || !isTdmMode(state.mode)) return;
+        const wpn = WEAPONS[state.weaponKey];
+        const sp = pickSafeSpawnPoint(false);
+        p.dying = false;
+        p.deathTimer = 0;
+        p.spectating = false;
+        p.hp = 100;
+        p.mag = wpn.magSize;
+        p.reserve = wpn.reserveMax;
+        p.reloading = false;
+        p.fireCooldown = 0;
+        p.ads = false;
+        p.adsBlend = 0;
+        p.crouching = false;
+        p.sliding = false;
+        p.sprinting = false;
+        p.mantling = false;
+        p.stunCount = 1;
+        p.fragCount = 1;
+        p.x = sp.x;
+        p.z = sp.z;
+        p.footY = sp.footY;
+        p.y = sp.footY + 1.68;
+        p.vx = 0;
+        p.vy = 0;
+        p.vz = 0;
+        p.yaw = sp.playerYaw;
+        p.pitch = -0.015;
+        weaponRig.visible = true;
+        document.getElementById('spectate-banner').classList.add('hidden');
+        document.getElementById('damage-overlay').style.opacity = '0';
+        showCombatToast(`RESPAWNED AT ${sp.zone}`);
+        updateHUD();
+      }
+
+      function triggerOperatorDeath(operator, killedByPlayer = true) {
         if (operator.dying) return;
         operator.hp = 0;
         operator.dying = true;
         operator.deathTimer = 0;
+        if (killedByPlayer) state.kills++;
         spawnKillBurstEffect(
           new THREE.Vector3(operator.x, operator.footY + 1.35, operator.z),
           operator.name
         );
+
+        if (isTdmMode(state.mode)) {
+          state.tdmAllyKills++;
+          updateHUD();
+          if (state.tdmAllyKills >= state.tdmTargetKills) {
+            setTimeout(() => {
+              if (state.roundActive) {
+                endRound(true, `TDM VICTORY — REACHED ${state.tdmAllyKills}/${state.tdmTargetKills} KILLS!`);
+              }
+            }, 650);
+          } else {
+            const idx = operator.id === 'enemy2' ? 1 : 0;
+            if (operator._respawnTimer) clearTimeout(operator._respawnTimer);
+            operator._respawnTimer = setTimeout(() => respawnEnemyOperator(operator, idx), 1600);
+          }
+          return;
+        }
 
         const stillStanding = state.enemies.filter(e => e.active && e.hp > 0 && !e.dying);
         if (stillStanding.length === 0) {
@@ -3761,6 +4464,24 @@
         sfx.playKillConfirm();
         flashDamageOverlay();
         triggerGamepadRumble(0.85, 0.65, 260);
+
+        if (isTdmMode(state.mode)) {
+          state.tdmEnemyKills++;
+          updateHUD();
+          if (state.tdmEnemyKills >= state.tdmTargetKills) {
+            showCombatToast('OPPOSING TEAM REACHED TARGET KILLS!');
+            setTimeout(() => {
+              if (state.roundActive) {
+                endRound(false, `OPPOSING TEAM REACHED ${state.tdmEnemyKills}/${state.tdmTargetKills} KILLS — TDM DEFEAT`);
+              }
+            }, 900);
+          } else {
+            showCombatToast('ELIMINATED — ANTI-TRAP RESPAWN IN 1.5s...');
+            if (p._respawnTimer) clearTimeout(p._respawnTimer);
+            p._respawnTimer = setTimeout(respawnPlayerForTDM, 1500);
+          }
+          return;
+        }
 
         const allyStillAlive = (state.mode === '2v2' && state.ally.active && state.ally.hp > 0 && !state.ally.dying);
         if (allyStillAlive) {
@@ -3864,20 +4585,20 @@
         p.recoilPitchAccum += wpn.recoilPitch * (p.ads ? 0.58 : 1.0);
         p.recoilYawAccum += (Math.random() - 0.48) * wpn.recoilYaw;
 
-        const raycaster = new THREE.Raycaster();
+        const raycaster = sharedPlayerRaycaster;
         const spreadBase = p.ads ? wpn.adsSpread : wpn.hipSpread;
         let hitAny = false;
         let headshotAny = false;
 
-        const wallMeshes = wallColliders.map(c => c.mesh).filter(Boolean);
         const activeEnemies = state.enemies.filter(e => e.active && e.hp > 0 && !e.dying);
 
         for (let i = 0; i < wpn.pellets; i++) {
           const sx = (Math.random() - 0.5) * spreadBase * 2;
           const sy = (Math.random() - 0.5) * spreadBase * 2;
-          raycaster.setFromCamera(new THREE.Vector2(sx, sy), camera);
+          scratchVec2.set(sx, sy);
+          raycaster.setFromCamera(scratchVec2, camera);
 
-          const wallHits = raycaster.intersectObjects(wallMeshes, false);
+          const wallHits = raycaster.intersectObjects(cachedWallMeshes, false);
           const wallDist = wallHits.length > 0 ? wallHits[0].distance : 100;
 
           let closestEnemy = null;
@@ -3948,11 +4669,8 @@
         updateHUD();
 
         const mesh = new THREE.Mesh(
-          new THREE.SphereGeometry(0.11, 10, 10),
-          new THREE.MeshStandardMaterial({
-            color: type === 'frag' ? 0x3a4d2c : 0xd4d4d8,
-            emissive: type === 'frag' ? 0x7f1d1d : 0x1e3a8a
-          })
+          geoGrenadeSphere,
+          type === 'frag' ? matFragGrenade : matStunGrenade
         );
         const dir = new THREE.Vector3(0, 0.12, -1).applyQuaternion(camera.quaternion).normalize();
         mesh.position.copy(camera.position).add(dir.clone().multiplyScalar(0.6));
@@ -4040,15 +4758,16 @@
       }
 
       function hasLineOfSight(x1, y1, z1, x2, y2, z2) {
-        const origin = new THREE.Vector3(x1, y1, z1);
-        const target = new THREE.Vector3(x2, y2, z2);
-        const dir = target.clone().sub(origin);
-        const dist = dir.length();
-        dir.normalize();
+        scratchOrigin.set(x1, y1, z1);
+        scratchDir.set(x2 - x1, y2 - y1, z2 - z1);
+        const dist = scratchDir.length();
+        if (dist < 0.001) return true;
+        scratchDir.divideScalar(dist);
 
-        const ray = new THREE.Raycaster(origin, dir, 0.1, dist);
-        const wallMeshes = wallColliders.map(c => c.mesh).filter(Boolean);
-        const hits = ray.intersectObjects(wallMeshes, false);
+        sharedLosRaycaster.set(scratchOrigin, scratchDir);
+        sharedLosRaycaster.near = 0.1;
+        sharedLosRaycaster.far = dist;
+        const hits = sharedLosRaycaster.intersectObjects(cachedWallMeshes, false);
         return hits.length === 0;
       }
 
@@ -4222,7 +4941,20 @@
                       new THREE.Vector3(state.ally.x, state.ally.footY + 1.35, state.ally.z),
                       state.ally.name
                     );
-                    if (p.dying || p.hp <= 0) {
+                    if (isTdmMode(state.mode)) {
+                      state.tdmEnemyKills++;
+                      updateHUD();
+                      if (state.tdmEnemyKills >= state.tdmTargetKills) {
+                        setTimeout(() => {
+                          if (state.roundActive) {
+                            endRound(false, `ENEMY TEAM REACHED ${state.tdmEnemyKills}/${state.tdmTargetKills} KILLS — TDM DEFEAT`);
+                          }
+                        }, 800);
+                      } else {
+                        if (state.ally._respawnTimer) clearTimeout(state.ally._respawnTimer);
+                        state.ally._respawnTimer = setTimeout(respawnAllyOperator, 1750);
+                      }
+                    } else if (p.dying || p.hp <= 0) {
                       showCombatToast('TEAMMATE [ALLY]SoapMac ELIMINATED — SQUAD WIPED!');
                       setTimeout(() => {
                         if (state.roundActive) {
@@ -4358,7 +5090,7 @@
                       triggerHitmarkerUI(isHead);
                     }
                     if (targetEnemy.hp <= 0) {
-                      triggerOperatorDeath(targetEnemy);
+                      triggerOperatorDeath(targetEnemy, false);
                     }
                     updateHUD();
                   }
@@ -4417,11 +5149,30 @@
       }
 
       function formatMatchTimer(secFloat) {
+        if (!Number.isFinite(secFloat)) return 'FREE TIME';
         const total = Math.max(0, secFloat);
         const mins = Math.floor(total / 60);
         const secs = Math.floor(total % 60);
         const tenths = Math.floor((total - Math.floor(total)) * 10);
         return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}.${tenths}`;
+      }
+
+      const hudCache = {};
+      function setHudText(id, val) {
+        const str = String(val);
+        if (hudCache[id] !== str) {
+          hudCache[id] = str;
+          const el = document.getElementById(id);
+          if (el) el.textContent = str;
+        }
+      }
+      function setHudWidth(id, pct) {
+        const str = `${pct}%`;
+        if (hudCache[id] !== str) {
+          hudCache[id] = str;
+          const el = document.getElementById(id);
+          if (el) el.style.width = str;
+        }
       }
 
       function updateHUD() {
@@ -4430,23 +5181,31 @@
         const e2 = state.enemies[1];
         const al = state.ally;
 
-        document.getElementById('player-hp-text').textContent = Math.max(0, Math.round(p.hp));
-        document.getElementById('player-hp-bar').style.width = `${Math.max(0, Math.min(100, p.hp))}%`;
+        const pHp = Math.max(0, Math.round(p.hp));
+        setHudText('player-hp-text', pHp);
+        setHudWidth('player-hp-bar', Math.min(100, pHp));
 
-        document.getElementById('enemy-hp-text').textContent = Math.max(0, Math.round(e1.hp));
-        document.getElementById('enemy-hp-bar').style.width = `${Math.max(0, Math.min(100, e1.hp))}%`;
+        const e1Hp = Math.max(0, Math.round(e1.hp));
+        setHudText('enemy-hp-text', e1Hp);
+        setHudWidth('enemy-hp-bar', Math.min(100, e1Hp));
 
-        if (state.mode === '2v2') {
-          document.getElementById('ally-hp-bar').style.width = `${Math.max(0, Math.min(100, al.hp))}%`;
-          document.getElementById('enemy2-hp-bar').style.width = `${Math.max(0, Math.min(100, e2.hp))}%`;
+        if (is2v2SquadMode(state.mode)) {
+          setHudWidth('ally-hp-bar', Math.max(0, Math.min(100, Math.round(al.hp))));
+          setHudWidth('enemy2-hp-bar', Math.max(0, Math.min(100, Math.round(e2.hp))));
         }
 
-        document.getElementById('hud-ammo-mag').textContent = p.mag;
-        document.getElementById('hud-ammo-reserve').textContent = p.reserve;
-        document.getElementById('hud-stun-count').textContent = p.stunCount;
-        document.getElementById('hud-frag-count').textContent = p.fragCount;
-        document.getElementById('hud-kills').textContent = state.kills;
-        document.getElementById('gulag-timer').textContent = formatMatchTimer(state.roundTime);
+        if (isTdmMode(state.mode)) {
+          setHudText('tdm-ally-score', state.tdmAllyKills);
+          setHudText('tdm-target-score', state.tdmTargetKills);
+          setHudText('tdm-enemy-score', state.tdmEnemyKills);
+        }
+
+        setHudText('hud-ammo-mag', p.mag);
+        setHudText('hud-ammo-reserve', p.reserve);
+        setHudText('hud-stun-count', p.stunCount);
+        setHudText('hud-frag-count', p.fragCount);
+        setHudText('hud-kills', state.kills);
+        setHudText('gulag-timer', formatMatchTimer(state.roundTime));
       }
 
       // --- 17. TOP-RIGHT MINI-MAP RENDERER ---
@@ -4606,11 +5365,36 @@
               sfx.playBuzzer(340);
               showCombatToast('GULAG GATES OPEN — WEAPONS & MOVEMENT FREE!');
             }
+          } else if (isTdmMode(state.mode)) {
+            // Team Deathmatch Timer (2m, 5m, 10m, or Free Time) + Final 4 Seconds Anticipation Beeping
+            if (Number.isFinite(state.roundTime)) {
+              state.roundTime = Math.max(0, state.roundTime - dt);
+              const remSec = Math.ceil(state.roundTime);
+              if (remSec >= 1 && remSec <= 4 && remSec !== state.lastMatchBeepSec) {
+                state.lastMatchBeepSec = remSec;
+                sfx.playTimerBeep(remSec);
+              }
+              if (state.roundTime <= 0) {
+                const win = state.tdmAllyKills >= state.tdmEnemyKills;
+                endRound(
+                  win,
+                  win
+                    ? `TDM TIME LIMIT REACHED — VICTORY (${state.tdmAllyKills} TO ${state.tdmEnemyKills} KILLS)!`
+                    : `TDM TIME LIMIT REACHED — DEFEAT (${state.tdmAllyKills} TO ${state.tdmEnemyKills} KILLS)`
+                );
+              }
+            }
           } else {
             if (!state.overtimeActive) {
               state.roundTime -= dt;
+              const remSec = Math.ceil(state.roundTime);
+              if (remSec >= 1 && remSec <= 4 && remSec !== state.lastMatchBeepSec) {
+                state.lastMatchBeepSec = remSec;
+                sfx.playTimerBeep(remSec);
+              }
               if (state.roundTime <= 0) {
-                state.roundTime = 20.0;
+                state.roundTime = 22.0; // Overtime Flag timer extended by 2 seconds (22.0s)
+                state.lastMatchBeepSec = -1;
                 state.overtimeActive = true;
                 document.getElementById('overtime-badge').classList.remove('hidden');
                 showCombatToast('OVERTIME — CAPTURE THE CENTER FLAG!');
@@ -4618,6 +5402,11 @@
               }
             } else {
               state.roundTime = Math.max(0, state.roundTime - dt);
+              const remSec = Math.ceil(state.roundTime);
+              if (remSec >= 1 && remSec <= 4 && remSec !== state.lastMatchBeepSec) {
+                state.lastMatchBeepSec = remSec;
+                sfx.playTimerBeep(remSec);
+              }
               if (state.roundTime <= 0) {
                 const enemyTotalHp = state.enemies.reduce((acc, e) => acc + (e.active ? e.hp : 0), 0);
                 const allyTotalHp = p.hp + (state.ally.active ? state.ally.hp : 0);
@@ -4626,7 +5415,7 @@
               }
             }
 
-            // Center Overtime Flag Capture + Decline When Leaving (Both Player and Teammate [ALLY]SoapMac can capture!)
+            // Center Gulag Flag Capture (~5.0s total duration, ~2s longer than before + Final 4 Seconds Anticipation Beep!)
             const pFlagDist = Math.hypot(p.x - 0, p.z - 1.35);
             const pOnFlag = !p.dying && pFlagDist < 2.55 && p.footY < 1.2;
             const alOnFlag = state.ally.active && state.ally.hp > 0 && !state.ally.dying && state.ally.footY < 1.2 && Math.hypot(state.ally.x - 0, state.ally.z - 1.35) < 2.55;
@@ -4637,18 +5426,35 @@
             const flagBar = document.getElementById('flag-capture-bar');
             const flagLbl = document.getElementById('flag-capture-label');
 
+            const allyCapRate = 20.0;  // 100 / 20.0 = 5.0 seconds capture time (~2s longer than 2.94s!)
+            const enemyCapRate = 18.8; // ~5.3 seconds for enemy
+
             if (teamOnFlag || eOnFlag) {
               flagBox.classList.remove('hidden');
               if (teamOnFlag && !eOnFlag) {
-                state.flagProgress = Math.min(100, state.flagProgress + dt * 34);
-                flagLbl.textContent = pOnFlag ? 'CAPTURING GULAG FLAG...' : '[ALLY]SoapMac CAPTURING FLAG...';
+                state.flagProgress = Math.min(100, state.flagProgress + dt * allyCapRate);
+                const remFlagSec = Math.max(0, (100 - state.flagProgress) / allyCapRate);
+                const ceilFlagSec = Math.ceil(remFlagSec);
+                if (ceilFlagSec >= 1 && ceilFlagSec <= 4 && ceilFlagSec !== state.lastFlagBeepSec) {
+                  state.lastFlagBeepSec = ceilFlagSec;
+                  sfx.playTimerBeep(ceilFlagSec);
+                }
+                flagLbl.textContent = pOnFlag
+                  ? `CAPTURING GULAG FLAG (${remFlagSec.toFixed(1)}s)...`
+                  : `[ALLY]SoapMac CAPTURING FLAG (${remFlagSec.toFixed(1)}s)...`;
                 flagBar.style.width = `${Math.abs(state.flagProgress)}%`;
                 if (state.flagProgress >= 100) {
                   endRound(true, pOnFlag ? 'CAPTURED THE BACKROOMS GULAG FLAG!' : 'TEAMMATE [ALLY]SoapMac CAPTURED THE GULAG FLAG!');
                 }
               } else if (eOnFlag && !teamOnFlag) {
-                state.flagProgress = Math.max(-100, state.flagProgress - dt * 30);
-                flagLbl.textContent = 'ENEMY CAPTURING FLAG!';
+                state.flagProgress = Math.max(-100, state.flagProgress - dt * enemyCapRate);
+                const remFlagSec = Math.max(0, (100 - Math.abs(state.flagProgress)) / enemyCapRate);
+                const ceilFlagSec = Math.ceil(remFlagSec);
+                if (ceilFlagSec >= 1 && ceilFlagSec <= 4 && ceilFlagSec !== state.lastFlagBeepSec) {
+                  state.lastFlagBeepSec = ceilFlagSec;
+                  sfx.playTimerBeep(ceilFlagSec);
+                }
+                flagLbl.textContent = `ENEMY CAPTURING FLAG (${remFlagSec.toFixed(1)}s)!`;
                 flagBar.style.width = `${Math.abs(state.flagProgress)}%`;
                 if (state.flagProgress <= -100) {
                   endRound(false, 'OPPONENT CAPTURED THE GULAG FLAG');
@@ -4657,15 +5463,17 @@
                 flagLbl.textContent = 'FLAG CONTESTED!';
               }
             } else if (Math.abs(state.flagProgress) > 0.1) {
+              state.lastFlagBeepSec = -1;
               if (state.flagProgress > 0) {
-                state.flagProgress = Math.max(0, state.flagProgress - dt * 22);
+                state.flagProgress = Math.max(0, state.flagProgress - dt * 18);
               } else {
-                state.flagProgress = Math.min(0, state.flagProgress + dt * 22);
+                state.flagProgress = Math.min(0, state.flagProgress + dt * 18);
               }
               flagBox.classList.remove('hidden');
               flagLbl.textContent = 'FLAG PROGRESS DECLINING...';
               flagBar.style.width = `${Math.abs(state.flagProgress)}%`;
             } else {
+              state.lastFlagBeepSec = -1;
               state.flagProgress = 0;
               flagBox.classList.add('hidden');
             }
@@ -4789,7 +5597,10 @@
               resolveWorldCollisions(p, 0.36);
             }
           } else {
-            const wantSprint = keys['ShiftLeft'] || gamepadState.sprintLock || (gamepadState.moveY > 0.82);
+            const wantSprint = keys['ShiftLeft'] || gamepadState.sprintLock || (gamepadState.moveY > 0.82) || touchJoyVec.sprinting;
+            if (canMoveNow && wantSprint && moveForward > 0.25 && !p.sliding && p.crouching) {
+              p.crouching = false;
+            }
             p.sprinting = Boolean(canMoveNow && wantSprint && moveForward > 0.25 && !p.ads && !p.crouching && !p.reloading);
 
             if (p.sliding) {
@@ -5047,6 +5858,7 @@
           kp.mat.opacity = Math.max(0, kp.life);
           if (kp.life <= 0) {
             scene.remove(kp.mesh);
+            if (kp.mat) kp.mat.dispose();
             state.killParticles.splice(i, 1);
           }
         }
@@ -5062,7 +5874,10 @@
         } else {
           updateOperatorsAI(dt, now);
         }
-        renderMinimap();
+        if (!animate._lastMM || now - animate._lastMM > 48) {
+          animate._lastMM = now;
+          renderMinimap();
+        }
 
         // 6. Render World & Weapon Viewmodel
         renderer.clear();
@@ -5096,11 +5911,19 @@
         return isStandaloneWebApp() && webAppOrientationPhase === 'landscape' && window.innerHeight > window.innerWidth;
       }
 
+      function getRawViewportSize() {
+        const vv = window.visualViewport;
+        const w = vv ? Math.round(vv.width) : window.innerWidth;
+        const h = vv ? Math.round(vv.height) : window.innerHeight;
+        return { width: w || window.innerWidth, height: h || window.innerHeight };
+      }
+
       function getGameViewportSize() {
+        const raw = getRawViewportSize();
         if (isForcingLandscapeRotation()) {
-          return { width: window.innerHeight, height: window.innerWidth };
+          return { width: raw.height, height: raw.width };
         }
-        return { width: window.innerWidth, height: window.innerHeight };
+        return { width: raw.width, height: raw.height };
       }
 
       function toGameTouchCoords(clientX, clientY) {
@@ -5157,6 +5980,13 @@
         }
 
         const vp = getGameViewportSize();
+        if (gameContainer && !isForcingLandscapeRotation()) {
+          gameContainer.style.width = `${vp.width}px`;
+          gameContainer.style.height = `${vp.height}px`;
+        } else if (gameContainer) {
+          gameContainer.style.width = '';
+          gameContainer.style.height = '';
+        }
         renderer.setSize(vp.width, vp.height);
         camera.aspect = vp.width / Math.max(1, vp.height);
         camera.updateProjectionMatrix();
@@ -5181,6 +6011,10 @@
 
       function updateControlSchemeVisibility() {
         const showMobile = (controlScheme === 'mobile') || (controlScheme === 'auto' && isTouchDevice());
+        const gameContainer = document.getElementById('game-container');
+        if (gameContainer) {
+          gameContainer.classList.toggle('mobile-hud-active', showMobile);
+        }
         const hudEl = document.getElementById('cod-mobile-hud');
         if (hudEl) {
           hudEl.classList.toggle('hidden', !(showMobile && appScreenState === 'playing'));
@@ -5226,6 +6060,10 @@
         document.getElementById('select-lobby-loadout').value = state.weaponKey;
         document.getElementById('select-lobby-skill').value = state.difficulty;
         document.getElementById('select-lobby-mode').value = state.mode;
+        document.getElementById('select-tdm-time').value = state.tdmTimeOption;
+        document.getElementById('input-tdm-kills').value = String(state.tdmTargetKills);
+        setPlayerTeamSelection(state.playerTeam, true);
+        syncTdmUIControls();
       });
 
       document.getElementById('btn-back-title').addEventListener('click', () => {
@@ -5270,11 +6108,16 @@
         state.roomCode = rawRoom;
         state.mode = chosenMode;
         state.difficulty = chosenSkill;
+        state.tdmTimeOption = document.getElementById('select-tdm-time').value || '5';
+        state.tdmTargetKills = Math.max(1, Math.min(200, parseInt(document.getElementById('input-tdm-kills').value, 10) || 15));
+        document.getElementById('hud-tdm-time').value = state.tdmTimeOption;
+        document.getElementById('hud-tdm-kills').value = String(state.tdmTargetKills);
         document.getElementById('mode-select').value = chosenMode;
         document.getElementById('difficulty-select').value = chosenSkill;
         document.getElementById('hud-player-username').textContent = `[YOU] ${state.username}`;
 
         setupOnlineChannel(state.roomCode);
+        broadcastLobbyPresence();
         applySharedLoadout(chosenLoadout, true);
 
         appScreenState = 'playing';
@@ -5318,6 +6161,9 @@
           touchJoyVec.x = kx / maxJoyRadius;
           touchJoyVec.y = -ky / maxJoyRadius; // Up is +forward
           touchJoyVec.sprinting = (touchJoyVec.y > 0.78);
+          if (touchJoyVec.sprinting && state.player.crouching && !state.player.sliding) {
+            state.player.crouching = false;
+          }
           sprintBadge.style.opacity = touchJoyVec.sprinting ? '1' : '0';
 
           // Map virtual joystick into WASD keys so movement physics & counter-strafing work identically!
