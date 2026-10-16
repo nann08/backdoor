@@ -2,7 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="BACK DOOR" />
+  <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22BACK%20DOOR%22%2C%22short_name%22%3A%22BACK%20DOOR%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23070705%22%2C%22theme_color%22%3A%22%23070705%22%2C%22orientation%22%3A%22any%22%7D" />
   <title>BACK DOOR — Backrooms Gulag (1v1 & 2v2 Online)</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -159,6 +164,44 @@
       transform: scale(0.92);
       background: rgba(234, 179, 8, 0.42);
       border-color: rgba(250, 204, 21, 0.9);
+    }
+
+    /* iOS Home Screen Web App Only: Vertical Loading Screen -> Smooth Landscape Transition */
+    #game-container.webapp-transition-active {
+      transition: transform 0.56s cubic-bezier(0.22, 1, 0.36, 1), width 0.56s cubic-bezier(0.22, 1, 0.36, 1), height 0.56s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    #game-container.webapp-landscape-rotated {
+      position: fixed !important;
+      top: 50% !important;
+      left: 50% !important;
+      width: 100dvh !important;
+      height: 100vw !important;
+      transform: translate(-50%, -50%) rotate(90deg);
+      transform-origin: center center;
+    }
+    #loading-screen.webapp-vertical-mode {
+      flex-direction: column;
+      justify-content: center;
+      padding: 2.25rem 1.5rem;
+    }
+    #loading-screen.webapp-vertical-mode h1 {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      line-height: 0.94;
+      font-size: 4.25rem;
+      gap: 0.15rem;
+      margin-bottom: 2rem;
+    }
+    #loading-screen.webapp-vertical-counterrotate {
+      position: fixed !important;
+      top: 50% !important;
+      left: 50% !important;
+      width: 100dvh !important;
+      height: 100vw !important;
+      inset: auto !important;
+      transform: translate(-50%, -50%) rotate(-90deg);
+      transform-origin: center center;
     }
 
     ::-webkit-scrollbar {
@@ -5028,23 +5071,112 @@
         renderer.render(viewScene, viewCamera);
       }
 
-      window.addEventListener('resize', () => {
-        const w = window.innerWidth;
-        const h = window.innerHeight;
-        renderer.setSize(w, h);
-        camera.aspect = w / h;
-        camera.updateProjectionMatrix();
-        viewCamera.aspect = w / h;
-        viewCamera.updateProjectionMatrix();
-      });
-
-      // --- 19. STARTUP SCREEN ("BACK DOOR"), SETUP LOBBY, ZERO-LATENCY TUNER & iOS CoD MOBILE TOUCH ---
+      // --- 19. STARTUP SCREEN ("BACK DOOR"), iOS WEB APP ORIENTATION, SETUP LOBBY & iOS TOUCH ---
       let appScreenState = 'startup'; // 'startup' | 'setup' | 'playing'
       let controlScheme = 'auto';     // 'auto' | 'pc' | 'mobile'
       let touchJoyVec = { x: 0, y: 0, sprinting: false };
+      let webAppOrientationPhase = 'loading'; // 'loading' (vertical) -> 'landscape' (title & gameplay)
+
+      // Detects ONLY when launched as a downloaded Home Screen Web App on iPhone/iOS (or ?webapp=1 test param)
+      // When in a regular browser (desktop or mobile browser tab), this returns false so browser behavior is 100% unchanged!
+      function isStandaloneWebApp() {
+        const isIOSStandalone = Boolean(window.navigator.standalone === true);
+        const isDisplayStandalone = Boolean(
+          window.matchMedia &&
+          (window.matchMedia('(display-mode: standalone)').matches ||
+           window.matchMedia('(display-mode: fullscreen)').matches)
+        );
+        const ua = navigator.userAgent || '';
+        const isMobileOS = /iPhone|iPod|iPad|Android|Mobile/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        const forceWebApp = new URLSearchParams(window.location.search).get('webapp') === '1';
+        return forceWebApp || isIOSStandalone || (isDisplayStandalone && isMobileOS);
+      }
+
+      function isForcingLandscapeRotation() {
+        return isStandaloneWebApp() && webAppOrientationPhase === 'landscape' && window.innerHeight > window.innerWidth;
+      }
+
+      function getGameViewportSize() {
+        if (isForcingLandscapeRotation()) {
+          return { width: window.innerHeight, height: window.innerWidth };
+        }
+        return { width: window.innerWidth, height: window.innerHeight };
+      }
+
+      function toGameTouchCoords(clientX, clientY) {
+        if (isForcingLandscapeRotation()) {
+          return {
+            x: clientY,
+            y: window.innerWidth - clientX
+          };
+        }
+        return { x: clientX, y: clientY };
+      }
+
+      function syncWebAppOrientation(animateTransition = false) {
+        const gameContainer = document.getElementById('game-container');
+        const loadScreen = document.getElementById('loading-screen');
+        const standalone = isStandaloneWebApp();
+
+        if (!standalone) {
+          // Regular Browser: keep everything 100% exactly as default
+          if (gameContainer) {
+            gameContainer.classList.remove('webapp-landscape-rotated', 'webapp-transition-active');
+          }
+          if (loadScreen) {
+            loadScreen.classList.remove('webapp-vertical-mode', 'webapp-vertical-counterrotate');
+          }
+        } else {
+          if (webAppOrientationPhase === 'loading') {
+            // Web App Loading Phase: always vertical (portrait)
+            if (gameContainer) {
+              gameContainer.classList.remove('webapp-landscape-rotated');
+            }
+            if (loadScreen) {
+              loadScreen.classList.add('webapp-vertical-mode');
+              // If phone is physically held sideways during loading, counter-rotate loading screen so it stays vertical
+              loadScreen.classList.toggle('webapp-vertical-counterrotate', window.innerWidth > window.innerHeight);
+            }
+          } else {
+            // Web App Title Screen & Gameplay Phase: always landscape
+            if (loadScreen) {
+              loadScreen.classList.remove('webapp-vertical-counterrotate');
+            }
+            if (gameContainer) {
+              if (animateTransition) {
+                gameContainer.classList.add('webapp-transition-active');
+                clearTimeout(gameContainer._transTimer);
+                gameContainer._transTimer = setTimeout(() => {
+                  gameContainer.classList.remove('webapp-transition-active');
+                }, 620);
+              }
+              const needsCSSLandscape = (window.innerHeight > window.innerWidth);
+              gameContainer.classList.toggle('webapp-landscape-rotated', needsCSSLandscape);
+            }
+          }
+        }
+
+        const vp = getGameViewportSize();
+        renderer.setSize(vp.width, vp.height);
+        camera.aspect = vp.width / Math.max(1, vp.height);
+        camera.updateProjectionMatrix();
+        viewCamera.aspect = vp.width / Math.max(1, vp.height);
+        viewCamera.updateProjectionMatrix();
+      }
+
+      window.addEventListener('resize', () => {
+        syncWebAppOrientation(false);
+        updateControlSchemeVisibility();
+      });
+      window.addEventListener('orientationchange', () => {
+        setTimeout(() => {
+          syncWebAppOrientation(false);
+          updateControlSchemeVisibility();
+        }, 60);
+      });
 
       function isTouchDevice() {
-        return ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.innerWidth <= 820;
+        return isStandaloneWebApp() || ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || Math.min(window.innerWidth, window.innerHeight) <= 820;
       }
 
       function updateControlSchemeVisibility() {
@@ -5079,7 +5211,8 @@
           renderer.shadowMap.enabled = true;
           dustParticles.visible = true;
         }
-        renderer.setSize(window.innerWidth, window.innerHeight);
+        const vp = getGameViewportSize();
+        renderer.setSize(vp.width, vp.height);
       }
 
       // Startup "BACK DOOR" -> Play button -> Opens Game Setup & Lobby Page
@@ -5172,8 +5305,9 @@
         const maxJoyRadius = 42;
 
         function updateJoystickFromTouch(touch) {
-          const dx = touch.clientX - joyOrigin.x;
-          const dy = touch.clientY - joyOrigin.y;
+          const pt = toGameTouchCoords(touch.clientX, touch.clientY);
+          const dx = pt.x - joyOrigin.x;
+          const dy = pt.y - joyOrigin.y;
           const dist = Math.hypot(dx, dy);
           const clampedDist = Math.min(maxJoyRadius, dist);
           const angle = Math.atan2(dy, dx);
@@ -5214,7 +5348,7 @@
           const t = e.changedTouches[0];
           joyTouchId = t.identifier;
           const rect = joyZone.getBoundingClientRect();
-          joyOrigin = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+          joyOrigin = toGameTouchCoords(rect.left + rect.width / 2, rect.top + rect.height / 2);
           updateJoystickFromTouch(t);
         }, { passive: false });
 
@@ -5240,9 +5374,10 @@
 
         function handleTouchLookMove(t) {
           if (!state.roundActive || state.player.dying) return;
-          const dx = t.clientX - lastLookPos.x;
-          const dy = t.clientY - lastLookPos.y;
-          lastLookPos = { x: t.clientX, y: t.clientY };
+          const pt = toGameTouchCoords(t.clientX, t.clientY);
+          const dx = pt.x - lastLookPos.x;
+          const dy = pt.y - lastLookPos.y;
+          lastLookPos = pt;
           const sens = (state.player.ads ? 0.0032 : 0.0048) * state.mouseSensMult;
           state.player.yaw -= dx * sens;
           state.player.pitch = Math.max(-1.42, Math.min(1.42, state.player.pitch - dy * sens));
@@ -5253,7 +5388,7 @@
           sfx.init();
           const t = e.changedTouches[0];
           lookTouchId = t.identifier;
-          lastLookPos = { x: t.clientX, y: t.clientY };
+          lastLookPos = toGameTouchCoords(t.clientX, t.clientY);
         }, { passive: false });
 
         lookZone.addEventListener('touchmove', (e) => {
@@ -5280,7 +5415,7 @@
           btnFire.classList.add('active-touch');
           const t = e.changedTouches[0];
           fireTouchId = t.identifier;
-          lastFirePos = { x: t.clientX, y: t.clientY };
+          lastFirePos = toGameTouchCoords(t.clientX, t.clientY);
           mouseFireHeld = true;
           if (state.countdownTime <= 0) attemptPlayerFire();
         }, { passive: false });
@@ -5290,9 +5425,10 @@
           for (let i = 0; i < e.changedTouches.length; i++) {
             const t = e.changedTouches[i];
             if (t.identifier === fireTouchId) {
-              const dx = t.clientX - lastFirePos.x;
-              const dy = t.clientY - lastFirePos.y;
-              lastFirePos = { x: t.clientX, y: t.clientY };
+              const pt = toGameTouchCoords(t.clientX, t.clientY);
+              const dx = pt.x - lastFirePos.x;
+              const dy = pt.y - lastFirePos.y;
+              lastFirePos = pt;
               const sens = (state.player.ads ? 0.0032 : 0.0046) * state.mouseSensMult;
               state.player.yaw -= dx * sens;
               state.player.pitch = Math.max(-1.42, Math.min(1.42, state.player.pitch - dy * sens));
@@ -5369,13 +5505,16 @@
       })();
 
       window.onload = () => {
+        webAppOrientationPhase = 'loading';
+        syncWebAppOrientation(false);
         applyPerformancePreset('balanced');
         updateControlSchemeVisibility();
         resetPositionsForRound();
         state.roundActive = false;
         requestAnimationFrame(animate);
 
-        // Seamless Loading Screen to Title Screen crossfade (Zero disappearing/reappearing title cut!)
+        // Seamless Loading Screen to Title Screen crossfade
+        // On iPhone Standalone Web App: starts vertical during loading, then smoothly transitions to landscape for Title Screen & Gameplay!
         const loadScreen = document.getElementById('loading-screen');
         const loadFill = document.getElementById('loading-bar-fill');
         const loadPct = document.getElementById('loading-percent-label');
@@ -5389,20 +5528,28 @@
           if (loadStatus) {
             if (progress < 45) loadStatus.textContent = 'INITIALIZING PBR BACKROOMS...';
             else if (progress < 85) loadStatus.textContent = 'PREPARING GULAG ARENA...';
-            else loadStatus.textContent = 'READY';
+            else loadStatus.textContent = isStandaloneWebApp() ? 'TRANSITIONING TO LANDSCAPE...' : 'READY';
           }
           if (progress >= 100) {
             clearInterval(loadInterval);
             setTimeout(() => {
+              // Transition Web App from Vertical Loading Screen -> Landscape Title Screen & Gameplay
+              webAppOrientationPhase = 'landscape';
+              if (isStandaloneWebApp() && screen.orientation && typeof screen.orientation.lock === 'function') {
+                screen.orientation.lock('landscape').catch(() => {});
+              }
+              syncWebAppOrientation(true);
+              updateControlSchemeVisibility();
+
               if (loadScreen) {
-                // Smooth cross-fade: startup-screen is already sitting directly underneath, so title stays solid!
+                // Smooth cross-fade: startup-screen is sitting directly underneath
                 loadScreen.style.pointerEvents = 'none';
                 loadScreen.style.opacity = '0';
                 setTimeout(() => {
                   loadScreen.classList.add('hidden');
-                }, 520);
+                }, 540);
               }
-            }, 140);
+            }, 160);
           }
         }, 40);
       };
