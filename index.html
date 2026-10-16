@@ -166,16 +166,19 @@
       border-color: rgba(250, 204, 21, 0.9);
     }
 
+    /* Allow smooth vertical touch scrolling inside Setup & Lobby Modal on phones & Web App mode */
+    #online-modal, #online-modal * {
+      touch-action: pan-y !important;
+      -webkit-overflow-scrolling: touch;
+    }
     /* iOS Home Screen Web App Only: Vertical Loading Screen -> Smooth Landscape Transition */
     #game-container.webapp-transition-active {
-      transition: transform 0.56s cubic-bezier(0.22, 1, 0.36, 1), width 0.56s cubic-bezier(0.22, 1, 0.36, 1), height 0.56s cubic-bezier(0.22, 1, 0.36, 1);
+      transition: opacity 0.32s ease-out;
     }
     #game-container.webapp-landscape-rotated {
       position: fixed !important;
       top: 50% !important;
       left: 50% !important;
-      width: 100dvh !important;
-      height: 100vw !important;
       transform: translate(-50%, -50%) rotate(90deg);
       transform-origin: center center;
     }
@@ -2508,66 +2511,194 @@
       pistolGroup.add(psBarrel);
       gunMeshGroup.add(pistolGroup);
 
-      // 7E. TACTICAL COMBAT KNIFE (DRAWN AUTOMATICALLY WHEN OUT OF AMMO — 1-STAB KILL)
+      // 7E. BESPOKE M9 BAYONET / SPEC-OPS COMBAT KNIFE + FULL RIGHT FOREARM & ARTICULATED GLOVED HAND
       const knifeGroup = new THREE.Group();
       knifeGroup.visible = false;
 
-      const matKnifeSteel = new THREE.MeshStandardMaterial({
-        color: 0xdbe4eb,
-        roughness: 0.14,
-        metalness: 0.96
+      const matKnifeSpine = new THREE.MeshStandardMaterial({
+        color: 0x24282e,
+        normalMap: pbrWallPlain.normalMap,
+        normalScale: new THREE.Vector2(0.18, 0.18),
+        roughness: 0.24,
+        metalness: 0.92
       });
       const matKnifeEdge = new THREE.MeshStandardMaterial({
-        color: 0xffffff,
-        emissive: 0x334155,
-        emissiveIntensity: 0.25,
-        roughness: 0.08,
+        color: 0xeef4f8,
+        emissive: 0x1e293b,
+        emissiveIntensity: 0.18,
+        roughness: 0.09,
         metalness: 0.98
       });
+      const matKnifeFuller = new THREE.MeshStandardMaterial({
+        color: 0x0f1115,
+        roughness: 0.42,
+        metalness: 0.85
+      });
+      const matGripG10 = new THREE.MeshStandardMaterial({
+        color: 0x1c201b,
+        normalMap: pbrFloor.normalMap,
+        normalScale: new THREE.Vector2(0.45, 0.45),
+        roughness: 0.58,
+        metalness: 0.18
+      });
 
-      // Right-hand gloved fist holding the knife
-      const knifeRightGlove = new THREE.Mesh(new THREE.BoxGeometry(0.078, 0.072, 0.105), matGlove);
-      knifeRightGlove.position.set(0.02, -0.045, -0.06);
-      knifeRightGlove.rotation.x = 0.22;
-      knifeGroup.add(knifeRightGlove);
+      // 1. Right Forearm Sleeve, Rolled Cuff, Tactical Wristwatch & Skin Wrist
+      const rightArmSub = new THREE.Group();
+      const rSleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.064, 0.078, 0.32, 20), matSleeveOlive);
+      rSleeve.position.set(0.11, -0.19, 0.14);
+      rSleeve.rotation.x = 0.78;
+      rSleeve.rotation.z = 0.32;
+      rightArmSub.add(rSleeve);
 
-      // Contoured combat knife handle with grip ridges
-      const knifeHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.021, 0.145, 16), matGunPolymer);
-      knifeHandle.rotation.x = Math.PI / 2 - 0.35;
-      knifeHandle.position.set(0.02, -0.02, -0.075);
-      knifeGroup.add(knifeHandle);
+      const rCuff = new THREE.Mesh(new THREE.TorusGeometry(0.060, 0.016, 14, 24), matSleeveOlive);
+      rCuff.position.set(0.068, -0.105, 0.032);
+      rCuff.rotation.x = 0.82;
+      rCuff.rotation.y = -0.30;
+      rightArmSub.add(rCuff);
 
-      // Tactical pommel ring
-      const knifePommel = new THREE.Mesh(new THREE.TorusGeometry(0.018, 0.005, 10, 20), matGunMetal);
-      knifePommel.position.set(0.02, -0.048, -0.005);
-      knifePommel.rotation.y = Math.PI / 2;
-      knifeGroup.add(knifePommel);
+      const rWrist = new THREE.Mesh(new THREE.CylinderGeometry(0.046, 0.052, 0.12, 20), matSkin);
+      rWrist.position.set(0.048, -0.068, -0.018);
+      rWrist.rotation.x = 0.82;
+      rWrist.rotation.z = 0.26;
+      rightArmSub.add(rWrist);
 
-      // Crossguard / Hilt
-      const knifeGuard = new THREE.Mesh(new THREE.BoxGeometry(0.026, 0.068, 0.014), matGunMetal);
-      knifeGuard.position.set(0.02, 0.006, -0.142);
-      knifeGuard.rotation.x = -0.35;
-      knifeGroup.add(knifeGuard);
+      // Tactical Operator Watch on Right Wrist
+      const watchStrap = new THREE.Mesh(new THREE.CylinderGeometry(0.049, 0.049, 0.026, 18), matGunPolymer);
+      watchStrap.position.set(0.052, -0.075, -0.008);
+      watchStrap.rotation.x = 0.82;
+      watchStrap.rotation.z = 0.26;
+      rightArmSub.add(watchStrap);
 
-      // Main Clip-Point Steel Blade
-      const knifeBlade = new THREE.Mesh(new THREE.BoxGeometry(0.007, 0.036, 0.24), matKnifeSteel);
-      knifeBlade.position.set(0.02, 0.048, -0.255);
-      knifeBlade.rotation.x = -0.35;
-      knifeGroup.add(knifeBlade);
+      const watchFace = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.008, 16), matTritium);
+      watchFace.position.set(0.026, -0.056, -0.012);
+      watchFace.rotation.z = 0.65;
+      rightArmSub.add(watchFace);
 
-      // Razor Beveled Cutting Edge
-      const knifeBevel = new THREE.Mesh(new THREE.BoxGeometry(0.003, 0.012, 0.245), matKnifeEdge);
-      knifeBevel.position.set(0.02, 0.033, -0.258);
-      knifeBevel.rotation.x = -0.35;
-      knifeGroup.add(knifeBevel);
+      // Articulated Right Tactical Glove (Palm + Knuckle Guard + 4 Curled Fingers + Thumb)
+      const rGlovePalm = new THREE.Mesh(new THREE.BoxGeometry(0.076, 0.068, 0.096), matGlove);
+      rGlovePalm.position.set(0.025, -0.032, -0.072);
+      rGlovePalm.rotation.set(0.32, -0.12, 0.15);
+      rightArmSub.add(rGlovePalm);
 
-      // Tapered Piercing Tip Cone
-      const knifeTip = new THREE.Mesh(new THREE.ConeGeometry(0.019, 0.068, 4), matKnifeEdge);
-      knifeTip.rotation.x = -Math.PI / 2 - 0.35;
-      knifeTip.rotation.z = Math.PI / 4;
-      knifeTip.position.set(0.02, 0.088, -0.382);
-      knifeGroup.add(knifeTip);
+      const rKnucklePlate = new THREE.Mesh(new THREE.BoxGeometry(0.078, 0.018, 0.074), matGunPolymer);
+      rKnucklePlate.position.set(0.042, -0.018, -0.076);
+      rKnucklePlate.rotation.set(0.32, -0.12, 0.45);
+      rightArmSub.add(rKnucklePlate);
 
+      for (let f = 0; f < 4; f++) {
+        const finger = new THREE.Mesh(new THREE.CylinderGeometry(0.0105, 0.0095, 0.058, 12), matGlove);
+        finger.position.set(-0.004, -0.012 - f * 0.012, -0.098 + f * 0.018);
+        finger.rotation.set(0.25, 0.15, Math.PI / 2 - 0.2);
+        rightArmSub.add(finger);
+      }
+
+      const rThumb = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.010, 0.056, 12), matGlove);
+      rThumb.position.set(0.004, 0.012, -0.105);
+      rThumb.rotation.set(-0.45, 0.25, 0.35);
+      rightArmSub.add(rThumb);
+      knifeGroup.add(rightArmSub);
+
+      // 2. Pivot Group for the M9 Bayonet / Spec-Ops Blade (allows smooth draw-spin & wrist-snap animations)
+      const knifeBladePivot = new THREE.Group();
+      knifeBladePivot.position.set(0.014, -0.018, -0.082);
+      knifeBladePivot.rotation.set(-0.42, 0.08, -0.06);
+
+      // Contoured G10 Micarta Handle Core + 6 Ribbed Traction Rings
+      const kHandleCore = new THREE.Mesh(new THREE.CylinderGeometry(0.0165, 0.0185, 0.132, 20), matGripG10);
+      kHandleCore.rotation.x = Math.PI / 2;
+      kHandleCore.position.set(0, 0, 0.01);
+      knifeBladePivot.add(kHandleCore);
+
+      for (let r = 0; r < 6; r++) {
+        const gripRing = new THREE.Mesh(new THREE.TorusGeometry(0.0178, 0.0026, 10, 20), matGunPolymer);
+        gripRing.position.set(0, 0, 0.058 - r * 0.019);
+        knifeBladePivot.add(gripRing);
+      }
+
+      // Machined Steel Pommel Cap & Karambit Finger Ring
+      const kPommelCap = new THREE.Mesh(new THREE.CylinderGeometry(0.019, 0.017, 0.018, 18), matGunMetal);
+      kPommelCap.rotation.x = Math.PI / 2;
+      kPommelCap.position.set(0, 0, 0.082);
+      knifeBladePivot.add(kPommelCap);
+
+      const kPommelRing = new THREE.Mesh(new THREE.TorusGeometry(0.017, 0.0048, 12, 24), matGunMetal);
+      kPommelRing.rotation.y = Math.PI / 2;
+      kPommelRing.position.set(0, -0.006, 0.104);
+      knifeBladePivot.add(kPommelRing);
+
+      // Heavy M9 Crossguard (Quillon) + Upper Barrel Ring
+      const kCrossGuard = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.078, 0.014), matGunMetal);
+      kCrossGuard.position.set(0, 0.004, -0.060);
+      knifeBladePivot.add(kCrossGuard);
+
+      const kBarrelRing = new THREE.Mesh(new THREE.TorusGeometry(0.012, 0.0038, 10, 20), matGunMetal);
+      kBarrelRing.position.set(0, 0.036, -0.060);
+      knifeBladePivot.add(kBarrelRing);
+
+      // Custom Extruded Clip-Point Bowie Blade Profile (with beveled razor edge)
+      const bladeShape = new THREE.Shape();
+      bladeShape.moveTo(0.0, -0.016);          // Base of cutting edge at guard
+      bladeShape.lineTo(0.145, -0.016);        // Straight primary razor edge
+      bladeShape.quadraticCurveTo(0.205, -0.014, 0.245, 0.010); // Swept curved belly up to piercing point
+      bladeShape.lineTo(0.180, 0.021);         // Clip-point swedge
+      bladeShape.lineTo(0.0, 0.021);           // Thick serrated spine back to guard
+      bladeShape.closePath();
+
+      const bladeExtrudeGeo = new THREE.ExtrudeGeometry(bladeShape, {
+        depth: 0.0046,
+        bevelEnabled: true,
+        bevelSegments: 3,
+        steps: 1,
+        bevelSize: 0.0022,
+        bevelThickness: 0.0020
+      });
+      // Rotate extruded blade so X-length runs along -Z (forward), Y-height along +Y, and Z-thickness centered on X=0
+      const kBladeMain = new THREE.Mesh(bladeExtrudeGeo, matKnifeEdge);
+      kBladeMain.rotation.y = Math.PI / 2;
+      kBladeMain.position.set(-0.0023, 0.001, -0.065);
+      knifeBladePivot.add(kBladeMain);
+
+      // Dark Oxide Upper Spine Flat (Two-tone tactical finish)
+      const kSpineFlat = new THREE.Mesh(new THREE.BoxGeometry(0.0068, 0.014, 0.182), matKnifeSpine);
+      kSpineFlat.position.set(0, 0.013, -0.156);
+      knifeBladePivot.add(kSpineFlat);
+
+      // Recessed Blood-Groove Fuller on Both Sides of Blade
+      const kFuller = new THREE.Mesh(new THREE.BoxGeometry(0.0076, 0.0055, 0.135), matKnifeFuller);
+      kFuller.position.set(0, 0.008, -0.142);
+      knifeBladePivot.add(kFuller);
+
+      // 7 Saw-Back Spine Serration Teeth
+      for (let t = 0; t < 7; t++) {
+        const tooth = new THREE.Mesh(new THREE.ConeGeometry(0.0036, 0.009, 4), matKnifeEdge);
+        tooth.rotation.z = Math.PI / 4;
+        tooth.rotation.x = -0.35;
+        tooth.position.set(0, 0.024, -0.088 - t * 0.016);
+        knifeBladePivot.add(tooth);
+      }
+
+      // Wire-Cutter Bayonet Slot near front of blade
+      const kWireSlot = new THREE.Mesh(new THREE.BoxGeometry(0.0082, 0.007, 0.024), matKnifeFuller);
+      kWireSlot.position.set(0, 0.006, -0.232);
+      knifeBladePivot.add(kWireSlot);
+
+      // Subtle dynamic slash-trail arc ribbon (flashes briefly during knife swing)
+      const slashTrailMat = new THREE.MeshBasicMaterial({
+        color: 0xe2e8f0,
+        transparent: true,
+        opacity: 0,
+        side: THREE.DoubleSide,
+        depthWrite: false
+      });
+      const slashTrailMesh = new THREE.Mesh(
+        new THREE.RingGeometry(0.18, 0.25, 16, 1, -Math.PI * 0.35, Math.PI * 0.70),
+        slashTrailMat
+      );
+      slashTrailMesh.position.set(0, 0.02, -0.26);
+      slashTrailMesh.rotation.x = Math.PI / 2;
+      knifeBladePivot.add(slashTrailMesh);
+
+      knifeGroup.add(knifeBladePivot);
       gunMeshGroup.add(knifeGroup);
 
       // Tactical IR Laser Sight Beam on Weapon Viewmodel
@@ -2598,7 +2729,7 @@
       weaponRig.position.copy(HIP_POS);
       weaponRig.rotation.copy(HIP_ROT);
 
-      const KNIFE_SVG_PATH = 'M18 32l26-6 6-10 88-10-18 20-70 10-6 8-22 4-4-16z';
+      const KNIFE_SVG_PATH = 'M14 34c-4 0-7-3-7-7s3-7 7-7c3 0 5 2 6 4h24v-8h7v7h76l6 2 6-2 6 2 6-2 18 2c-8 10-20 15-36 15H51v8h-7v-8H20c-1 2-3 4-6 4z';
 
       function updateFirstPersonWeaponAppearance(wpnKey) {
         const isKnife = (wpnKey === 'knife');
@@ -2610,8 +2741,8 @@
         laserLine.visible = !isKnife;
 
         if (isKnife) {
-          leftArmGroup.position.set(-0.04, -0.03, 0.12);
-          ADS_POS.set(0.12, -0.135, -0.26);
+          leftArmGroup.position.set(-0.06, -0.045, 0.15);
+          ADS_POS.set(0.14, -0.145, -0.28);
         } else if (wpnKey === 'pistol') {
           leftArmGroup.position.set(0.02, -0.02, 0.16);
           muzzleFlashMesh.position.set(0, 0.055, -0.28);
@@ -4781,49 +4912,65 @@
         const p = state.player;
         if (!state.roundActive || p.dying || p.droppingGun || p.fireCooldown > 0 || state.countdownTime > 0) return;
 
-        p.fireCooldown = 0.36;
-        p.knifeSlashTimer = 0.30;
+        // Deliberate recovery between swings + alternating thrust/slash combo
+        p.fireCooldown = 0.50;
+        p.knifeSlashTimer = 0.34;
+        p.knifeComboStep = ((p.knifeComboStep || 0) + 1) % 2;
         p.ads = false;
         state.shotsFired++;
         sfx.playKnifeSwing();
 
-        // Subtle forward melee lunge impulse
-        const lookX = -Math.sin(p.yaw);
-        const lookZ = -Math.cos(p.yaw);
-        p.vx += lookX * 3.6;
-        p.vz += lookZ * 3.6;
+        // Modest forward step only when grounded
+        if (p.grounded) {
+          const lookX = -Math.sin(p.yaw);
+          const lookZ = -Math.cos(p.yaw);
+          p.vx += lookX * 1.65;
+          p.vz += lookZ * 1.65;
+        }
 
-        // Check melee hit (raycast + generous 3.45m CQC lunge cone — 1-Stab Instant Kill!)
+        // Strict CQC Melee Hit Detection (Max 1.85m blade reach + crosshair must actually be aimed on the enemy!)
+        const MELEE_MAX_REACH = 1.85;
         const activeEnemies = state.enemies.filter(e => e.active && e.hp > 0 && !e.dying);
         let stabbedEnemy = null;
-        let bestDist = 3.45;
+        let bestDist = MELEE_MAX_REACH;
 
-        // 1. Center raycast check within 3.45m
-        scratchVec2.set(0, 0);
-        sharedPlayerRaycaster.setFromCamera(scratchVec2, camera);
-        const wallHits = sharedPlayerRaycaster.intersectObjects(cachedWallMeshes, false);
-        const wallDist = wallHits.length > 0 ? wallHits[0].distance : 100;
+        // 1. Direct Crosshair Raycast (Center 0,0 + narrow ±0.022 blade-width rays)
+        const probeOffsets = [
+          [0, 0],
+          [-0.022, 0],
+          [0.022, 0]
+        ];
+        for (let rIdx = 0; rIdx < probeOffsets.length; rIdx++) {
+          scratchVec2.set(probeOffsets[rIdx][0], probeOffsets[rIdx][1]);
+          sharedPlayerRaycaster.setFromCamera(scratchVec2, camera);
+          const wallHits = sharedPlayerRaycaster.intersectObjects(cachedWallMeshes, false);
+          const wallDist = wallHits.length > 0 ? wallHits[0].distance : 100;
 
-        activeEnemies.forEach((enemy) => {
-          const hits = sharedPlayerRaycaster.intersectObjects(enemy.rig.hitMeshes, false);
-          if (hits.length > 0 && hits[0].distance <= bestDist && hits[0].distance < wallDist) {
-            bestDist = hits[0].distance;
-            stabbedEnemy = enemy;
-          }
-        });
+          activeEnemies.forEach((enemy) => {
+            const hits = sharedPlayerRaycaster.intersectObjects(enemy.rig.hitMeshes, false);
+            if (hits.length > 0 && hits[0].distance <= bestDist && hits[0].distance < wallDist) {
+              bestDist = hits[0].distance;
+              stabbedEnemy = enemy;
+            }
+          });
+          if (stabbedEnemy) break;
+        }
 
-        // 2. Wide CQC melee cone fallback so close-range stabs connect reliably on mobile & PC
+        // 2. Tight 3D Aim-Vector Check (Only if within 1.60m contact range AND 3D look vector including pitch is within ~13 deg of enemy torso)
         if (!stabbedEnemy) {
+          const camFwd = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).normalize();
           for (let i = 0; i < activeEnemies.length; i++) {
             const en = activeEnemies[i];
-            const dx = en.x - p.x;
-            const dz = en.z - p.z;
-            const dy = (en.footY + 1.0) - (p.footY + 1.0);
-            const dist3D = Math.hypot(dx, dz, dy);
-            if (dist3D <= 3.35) {
-              const horizDist = Math.hypot(dx, dz) || 0.001;
-              const dot = (dx / horizDist) * lookX + (dz / horizDist) * lookZ;
-              if ((dot >= 0.52 || dist3D <= 1.65) && hasLineOfSight(p.x, p.footY + 1.5, p.z, en.x, en.footY + 1.4, en.z)) {
+            const toChest = new THREE.Vector3(
+              en.x - camera.position.x,
+              (en.footY + 1.32) - camera.position.y,
+              en.z - camera.position.z
+            );
+            const dist3D = toChest.length();
+            if (dist3D > 0.05 && dist3D <= 1.60) {
+              const dot3D = toChest.divideScalar(dist3D).dot(camFwd);
+              // dot3D >= 0.974 means crosshair is within 13 degrees in full 3D (both yaw AND pitch)
+              if (dot3D >= 0.974 && hasLineOfSight(p.x, p.footY + 1.5, p.z, en.x, en.footY + 1.4, en.z)) {
                 if (dist3D < bestDist) {
                   bestDist = dist3D;
                   stabbedEnemy = en;
@@ -4836,7 +4983,7 @@
         if (stabbedEnemy) {
           const stabDmg = Math.max(100, stabbedEnemy.hp);
           stabbedEnemy.hp = 0;
-          stabbedEnemy.flinchTimer = 0.20;
+          stabbedEnemy.flinchTimer = 0.22;
           state.damageDealt += 100;
           state.shotsHit++;
           sfx.playHitmarker(true);
@@ -5914,7 +6061,7 @@
         } else if (state.roundActive) {
           weaponRig.visible = true;
           if (p.fireCooldown > 0) p.fireCooldown -= dt;
-          if (mouseFireHeld && wpn.auto && p.fireCooldown <= 0 && state.countdownTime <= 0) {
+          if (mouseFireHeld && wpn.auto && !p.hasKnife && p.fireCooldown <= 0 && state.countdownTime <= 0) {
             attemptPlayerFire();
           }
 
@@ -6083,10 +6230,10 @@
           camera.rotation.x = p.pitch + p.recoilPitchAccum - mantleDip * 0.6;
           camera.rotation.z = p.lean + (p.sliding ? 0.08 : 0);
 
-          // 3. Snappy Tactical FPS ADS, Gun-Drop, & Combat Knife Animations
+          // 3. Snappy Tactical FPS ADS, Gun-Drop, & Bespoke M9 Combat Knife Animations
           if (p.droppingGun) {
             p.dropGunTimer -= dt;
-            if (p.dropGunTimer <= 0.24 && !p.hasKnife) {
+            if (p.dropGunTimer <= 0.25 && !p.hasKnife) {
               p.hasKnife = true;
               updateFirstPersonWeaponAppearance('knife');
               updateHUD();
@@ -6109,32 +6256,59 @@
           const reloadProg = p.reloading ? (1 - p.reloadTimer / wpn.reloadDuration) : 0;
           const reloadDipY = p.reloading ? -0.10 * Math.sin(reloadProg * Math.PI) : 0;
 
-          // Gun-drop & knife-draw vertical dip
-          const dropDipY = p.droppingGun ? -0.26 * Math.sin((1 - p.dropGunTimer / 0.48) * Math.PI) : 0;
-          const dropPitchX = p.droppingGun ? -0.75 * Math.sin((1 - p.dropGunTimer / 0.48) * Math.PI) : 0;
+          // Gun-drop & knife-draw vertical dip + 360-degree Karambit pommel spin on draw
+          const dropDipY = p.droppingGun ? -0.24 * Math.sin((1 - p.dropGunTimer / 0.48) * Math.PI) : 0;
+          const dropPitchX = p.droppingGun ? -0.68 * Math.sin((1 - p.dropGunTimer / 0.48) * Math.PI) : 0;
 
-          // Visceral 1-stab-kill forward lunge & slash arc
-          const slashCurve = p.knifeSlashTimer > 0 ? Math.sin((1 - p.knifeSlashTimer / 0.30) * Math.PI) : 0;
-          const stabThrustZ = -slashCurve * 0.19;
-          const stabSweepX = -slashCurve * 0.08;
-          const stabPitchX = slashCurve * 0.52;
-          const stabYawY = slashCurve * 0.38;
+          // 2-Stage Stab & Diagonal Slash Animation
+          const slashProg = p.knifeSlashTimer > 0 ? (1 - p.knifeSlashTimer / 0.34) : 0;
+          const slashCurve = p.knifeSlashTimer > 0 ? Math.sin(slashProg * Math.PI) : 0;
+          const isSlashStrike = (p.knifeComboStep === 1);
+
+          const stabThrustZ = -slashCurve * (isSlashStrike ? 0.16 : 0.24);
+          const stabSweepX = isSlashStrike ? (-Math.cos(slashProg * Math.PI) * 0.11 * slashCurve) : (-slashCurve * 0.07);
+          const stabSweepY = isSlashStrike ? (slashCurve * 0.045) : (slashCurve * 0.025);
+          const stabPitchX = slashCurve * (isSlashStrike ? 0.38 : 0.62);
+          const stabYawY = slashCurve * (isSlashStrike ? 0.64 : 0.32);
+          const stabRollZ = slashCurve * (isSlashStrike ? -0.58 : 0.28);
+
+          if (p.hasKnife) {
+            // Animate the M9 Bayonet blade pivot & slash trail
+            const drawSpin = (p.droppingGun && p.dropGunTimer > 0)
+              ? (p.dropGunTimer / 0.25) * Math.PI * 2.0
+              : 0;
+            const idleBreathe = Math.sin(now * 0.0035) * 0.035;
+            knifeBladePivot.rotation.set(
+              -0.42 + drawSpin + slashCurve * 0.48 + idleBreathe,
+              0.08 + slashCurve * (isSlashStrike ? 0.42 : 0.12),
+              -0.06 + stabRollZ * 0.6
+            );
+            slashTrailMat.opacity = slashCurve > 0.35 ? (slashCurve - 0.35) * 0.65 : 0;
+            // Left CQC guard hand counter-motion during knife strike
+            leftArmGroup.position.set(
+              -0.06 - slashCurve * 0.05,
+              -0.045 - slashCurve * 0.04 + Math.sin(p.bobPhase) * 0.006,
+              0.15 + slashCurve * 0.08
+            );
+          } else {
+            slashTrailMat.opacity = 0;
+          }
 
           const targetPosX = THREE.MathUtils.lerp(HIP_POS.x, ADS_POS.x, p.adsBlend) + swayX + stabSweepX;
-          const targetPosY = THREE.MathUtils.lerp(HIP_POS.y, ADS_POS.y, p.adsBlend) - swayY + reloadDipY + dropDipY - mantleDip * 0.35;
+          const targetPosY = THREE.MathUtils.lerp(HIP_POS.y, ADS_POS.y, p.adsBlend) - swayY + reloadDipY + dropDipY + stabSweepY - mantleDip * 0.35;
           const targetPosZ = THREE.MathUtils.lerp(HIP_POS.z, ADS_POS.z, p.adsBlend) + stabThrustZ;
 
           weaponRig.position.x += (targetPosX - weaponRig.position.x) * Math.min(1, dt * 24);
           weaponRig.position.y += (targetPosY - weaponRig.position.y) * Math.min(1, dt * 24);
           weaponRig.position.z += (targetPosZ - weaponRig.position.z) * Math.min(1, dt * 24);
 
-          const sprintTiltX = p.sprinting ? 0.28 : (p.mantling ? -0.35 : 0);
-          const sprintTiltY = p.sprinting ? 0.42 : 0;
+          const sprintTiltX = p.sprinting ? (p.hasKnife ? 0.18 : 0.28) : (p.mantling ? -0.35 : 0);
+          const sprintTiltY = p.sprinting ? (p.hasKnife ? -0.22 : 0.42) : 0;
           const reloadTiltZ = p.reloading ? -0.48 * Math.sin(reloadProg * Math.PI) : 0;
 
           weaponRig.rotation.x += (THREE.MathUtils.lerp(HIP_ROT.x, ADS_ROT.x, p.adsBlend) + sprintTiltX + dropPitchX + stabPitchX - weaponRig.rotation.x) * Math.min(1, dt * 22);
           weaponRig.rotation.y += (THREE.MathUtils.lerp(HIP_ROT.y, ADS_ROT.y, p.adsBlend) + sprintTiltY + stabYawY - weaponRig.rotation.y) * Math.min(1, dt * 22);
-          weaponRig.rotation.z += (THREE.MathUtils.lerp(HIP_ROT.z, ADS_ROT.z, p.adsBlend) + reloadTiltZ - weaponRig.rotation.z) * Math.min(1, dt * 22);
+          weaponRig.rotation.z += (THREE.MathUtils.lerp(HIP_ROT.z, ADS_ROT.z, p.adsBlend) + reloadTiltZ + stabRollZ - weaponRig.rotation.z) * Math.min(1, dt * 22);
 
           const magOffset = p.reloading ? -Math.sin(reloadProg * Math.PI) * 0.18 : 0;
           mp5Mag.position.y = -0.11 + magOffset;
@@ -6367,9 +6541,10 @@
 
       function toGameTouchCoords(clientX, clientY) {
         if (isForcingLandscapeRotation()) {
+          const raw = getRawViewportSize();
           return {
             x: clientY,
-            y: window.innerWidth - clientX
+            y: raw.width - clientX
           };
         }
         return { x: clientX, y: clientY };
@@ -6379,6 +6554,7 @@
         const gameContainer = document.getElementById('game-container');
         const loadScreen = document.getElementById('loading-screen');
         const standalone = isStandaloneWebApp();
+        const raw = getRawViewportSize();
 
         if (!standalone) {
           // Regular Browser: keep everything 100% exactly as default
@@ -6396,8 +6572,7 @@
             }
             if (loadScreen) {
               loadScreen.classList.add('webapp-vertical-mode');
-              // If phone is physically held sideways during loading, counter-rotate loading screen so it stays vertical
-              loadScreen.classList.toggle('webapp-vertical-counterrotate', window.innerWidth > window.innerHeight);
+              loadScreen.classList.toggle('webapp-vertical-counterrotate', raw.width > raw.height);
             }
           } else {
             // Web App Title Screen & Gameplay Phase: always landscape
@@ -6410,21 +6585,18 @@
                 clearTimeout(gameContainer._transTimer);
                 gameContainer._transTimer = setTimeout(() => {
                   gameContainer.classList.remove('webapp-transition-active');
-                }, 620);
+                }, 380);
               }
-              const needsCSSLandscape = (window.innerHeight > window.innerWidth);
+              const needsCSSLandscape = (raw.height > raw.width);
               gameContainer.classList.toggle('webapp-landscape-rotated', needsCSSLandscape);
             }
           }
         }
 
         const vp = getGameViewportSize();
-        if (gameContainer && !isForcingLandscapeRotation()) {
+        if (gameContainer) {
           gameContainer.style.width = `${vp.width}px`;
           gameContainer.style.height = `${vp.height}px`;
-        } else if (gameContainer) {
-          gameContainer.style.width = '';
-          gameContainer.style.height = '';
         }
         renderer.setSize(vp.width, vp.height);
         camera.aspect = vp.width / Math.max(1, vp.height);
@@ -6433,15 +6605,24 @@
         viewCamera.updateProjectionMatrix();
       }
 
-      window.addEventListener('resize', () => {
+      function scheduleViewportResync() {
         syncWebAppOrientation(false);
         updateControlSchemeVisibility();
-      });
-      window.addEventListener('orientationchange', () => {
-        setTimeout(() => {
-          syncWebAppOrientation(false);
-          updateControlSchemeVisibility();
-        }, 60);
+        [60, 180, 380].forEach((ms) => {
+          setTimeout(() => {
+            syncWebAppOrientation(false);
+            updateControlSchemeVisibility();
+          }, ms);
+        });
+      }
+
+      window.addEventListener('resize', scheduleViewportResync);
+      window.addEventListener('orientationchange', scheduleViewportResync);
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', scheduleViewportResync);
+      }
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) scheduleViewportResync();
       });
 
       function isTouchDevice() {
@@ -6632,8 +6813,8 @@
           sfx.init();
           const t = e.changedTouches[0];
           joyTouchId = t.identifier;
-          const rect = joyZone.getBoundingClientRect();
-          joyOrigin = toGameTouchCoords(rect.left + rect.width / 2, rect.top + rect.height / 2);
+          // Anchor joystick origin at the initial thumb-down point in game coordinates so CSS rotation/scale never offsets it!
+          joyOrigin = toGameTouchCoords(t.clientX, t.clientY);
           updateJoystickFromTouch(t);
         }, { passive: false });
 
@@ -6663,6 +6844,8 @@
           const dx = pt.x - lastLookPos.x;
           const dy = pt.y - lastLookPos.y;
           lastLookPos = pt;
+          // Ignore any single-frame jump > 140px (e.g. if device orientation flipped mid-gesture)
+          if (Math.hypot(dx, dy) > 140) return;
           const sens = (state.player.ads ? 0.0032 : 0.0048) * state.mouseSensMult;
           state.player.yaw -= dx * sens;
           state.player.pitch = Math.max(-1.42, Math.min(1.42, state.player.pitch - dy * sens));
@@ -6685,11 +6868,17 @@
           }
         }, { passive: false });
 
-        lookZone.addEventListener('touchend', (e) => {
+        const endLookTouch = (e) => {
+          if (!e || !e.changedTouches) {
+            lookTouchId = null;
+            return;
+          }
           for (let i = 0; i < e.changedTouches.length; i++) {
             if (e.changedTouches[i].identifier === lookTouchId) lookTouchId = null;
           }
-        });
+        };
+        lookZone.addEventListener('touchend', endLookTouch);
+        lookZone.addEventListener('touchcancel', endLookTouch);
 
         // CoD Mobile Right-Thumb Fire Button (Supports Hold to Auto-Fire + Drag Thumb to Aim!)
         let fireTouchId = null;
@@ -6744,6 +6933,7 @@
           if (state.countdownTime <= 0) attemptPlayerFire();
         }, { passive: false });
         btnHip.addEventListener('touchend', () => { mouseFireHeld = false; });
+        btnHip.addEventListener('touchcancel', () => { mouseFireHeld = false; });
         btnHip.addEventListener('click', () => {
           if (state.countdownTime <= 0) attemptPlayerFire();
         });
