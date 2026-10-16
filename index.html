@@ -463,10 +463,10 @@
         </div>
       </div>
 
-      <!-- Mantle Prompt Badge (Center-Lower) -->
-      <div id="mantle-prompt" class="hidden absolute top-[62%] left-1/2 -translate-x-1/2 bg-black/80 border border-amber-400/60 px-2.5 py-0.5 rounded-xs font-mono-cod text-[10px] text-amber-200 tracking-wider uppercase shadow">
-        [SPACE / B] MANTLE / CLIMB LEDGE
-      </div>
+      <!-- Mantle Prompt Badge (Center-Lower — Tappable on Mobile & PC) -->
+      <button id="mantle-prompt" type="button" class="interactive-hud hidden absolute top-[60%] left-1/2 -translate-x-1/2 bg-black/85 hover:bg-amber-950/90 active:scale-95 border border-amber-400/80 px-3 py-1 rounded-xs font-mono-cod text-[10px] text-amber-200 tracking-wider uppercase shadow-lg cursor-pointer z-20">
+        [SPACE / JUMP] MANTLE LEDGE
+      </button>
 
       <!-- 2v2 Teammate Spectator HUD Banner -->
       <div id="spectate-banner" class="hidden absolute bottom-14 left-1/2 -translate-x-1/2 bg-black/85 border border-cyan-400/75 px-4 py-1.5 rounded-xs shadow-2xl flex flex-col items-center gap-0.5 z-20">
@@ -1105,6 +1105,75 @@
             osc.stop(now + 0.19);
           } catch (e) {}
         }
+        playKnifeDraw() {
+          if (!this.enabled) return;
+          this.init();
+          if (!this.ctx) return;
+          try {
+            const now = this.ctx.currentTime;
+            // 1. Heavy metallic gun drop clatter
+            const dropOsc = this.ctx.createOscillator();
+            const dropGain = this.ctx.createGain();
+            dropOsc.type = 'triangle';
+            dropOsc.frequency.setValueAtTime(155, now + 0.08);
+            dropOsc.frequency.exponentialRampToValueAtTime(42, now + 0.24);
+            dropGain.gain.setValueAtTime(0.20, now + 0.08);
+            dropGain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+            dropOsc.connect(dropGain);
+            dropGain.connect(this.ctx.destination);
+            dropOsc.start(now + 0.08);
+            dropOsc.stop(now + 0.26);
+
+            // 2. Crisp steel blade unsheathe ring ("shing!")
+            const bladeOsc = this.ctx.createOscillator();
+            const bladeGain = this.ctx.createGain();
+            bladeOsc.type = 'sine';
+            bladeOsc.frequency.setValueAtTime(1480, now + 0.20);
+            bladeOsc.frequency.exponentialRampToValueAtTime(3250, now + 0.38);
+            bladeGain.gain.setValueAtTime(0.15, now + 0.20);
+            bladeGain.gain.exponentialRampToValueAtTime(0.001, now + 0.40);
+            bladeOsc.connect(bladeGain);
+            bladeGain.connect(this.ctx.destination);
+            bladeOsc.start(now + 0.20);
+            bladeOsc.stop(now + 0.41);
+          } catch (e) {}
+        }
+        playKnifeSwing() {
+          if (!this.enabled) return;
+          this.init();
+          if (!this.ctx) return;
+          try {
+            const now = this.ctx.currentTime;
+            const cached = this.noiseCache.pistol || this.noiseCache.mp5;
+            if (cached) {
+              const noise = this.ctx.createBufferSource();
+              noise.buffer = cached.buffer;
+              const filter = this.ctx.createBiquadFilter();
+              filter.type = 'bandpass';
+              filter.frequency.setValueAtTime(1850, now);
+              filter.frequency.exponentialRampToValueAtTime(620, now + 0.085);
+              filter.Q.value = 1.4;
+              const nGain = this.ctx.createGain();
+              nGain.gain.setValueAtTime(0.22, now);
+              nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.088);
+              noise.connect(filter);
+              filter.connect(nGain);
+              nGain.connect(this.ctx.destination);
+              noise.start(now);
+            }
+            const swish = this.ctx.createOscillator();
+            const sGain = this.ctx.createGain();
+            swish.type = 'sine';
+            swish.frequency.setValueAtTime(520, now);
+            swish.frequency.exponentialRampToValueAtTime(130, now + 0.09);
+            sGain.gain.setValueAtTime(0.16, now);
+            sGain.gain.exponentialRampToValueAtTime(0.001, now + 0.095);
+            swish.connect(sGain);
+            sGain.connect(this.ctx.destination);
+            swish.start(now);
+            swish.stop(now + 0.10);
+          } catch (e) {}
+        }
         playReload() {
           if (!this.enabled) return;
           this.init();
@@ -1740,10 +1809,10 @@
           wallColliders.push(col);
           if (mantleable) {
             walkableSurfaces.push({
-              minX: col.minX,
-              maxX: col.maxX,
-              minZ: col.minZ,
-              maxZ: col.maxZ,
+              minX: col.minX - 0.24,
+              maxX: col.maxX + 0.24,
+              minZ: col.minZ - 0.24,
+              maxZ: col.maxZ + 0.24,
               getY: () => col.maxY,
               mapType: 'mantle_top'
             });
@@ -1792,6 +1861,12 @@
           mantleable: true,
           mesh: leftCorner
         });
+        walkableSurfaces.push({
+          minX: -3.26, maxX: -1.54,
+          minZ: zPos - 0.86, maxZ: zPos + 0.86,
+          getY: () => wallH,
+          mapType: 'mantle_top'
+        });
         addTopIronBars(-4.0, zPos, 3.5, 1.1, wallH);
 
         addBoxWall(4.1, 0, zPos, 3.4, wallH, 1.3, matWallCover, true, 'partition', true);
@@ -1808,6 +1883,12 @@
           mapType: 'pillar',
           mantleable: true,
           mesh: rightCorner
+        });
+        walkableSurfaces.push({
+          minX: 1.54, maxX: 3.26,
+          minZ: zPos - 0.86, maxZ: zPos + 0.86,
+          getY: () => wallH,
+          mapType: 'mantle_top'
         });
         addTopIronBars(4.0, zPos, 3.5, 1.1, wallH);
       }
@@ -2427,6 +2508,68 @@
       pistolGroup.add(psBarrel);
       gunMeshGroup.add(pistolGroup);
 
+      // 7E. TACTICAL COMBAT KNIFE (DRAWN AUTOMATICALLY WHEN OUT OF AMMO — 1-STAB KILL)
+      const knifeGroup = new THREE.Group();
+      knifeGroup.visible = false;
+
+      const matKnifeSteel = new THREE.MeshStandardMaterial({
+        color: 0xdbe4eb,
+        roughness: 0.14,
+        metalness: 0.96
+      });
+      const matKnifeEdge = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        emissive: 0x334155,
+        emissiveIntensity: 0.25,
+        roughness: 0.08,
+        metalness: 0.98
+      });
+
+      // Right-hand gloved fist holding the knife
+      const knifeRightGlove = new THREE.Mesh(new THREE.BoxGeometry(0.078, 0.072, 0.105), matGlove);
+      knifeRightGlove.position.set(0.02, -0.045, -0.06);
+      knifeRightGlove.rotation.x = 0.22;
+      knifeGroup.add(knifeRightGlove);
+
+      // Contoured combat knife handle with grip ridges
+      const knifeHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.021, 0.145, 16), matGunPolymer);
+      knifeHandle.rotation.x = Math.PI / 2 - 0.35;
+      knifeHandle.position.set(0.02, -0.02, -0.075);
+      knifeGroup.add(knifeHandle);
+
+      // Tactical pommel ring
+      const knifePommel = new THREE.Mesh(new THREE.TorusGeometry(0.018, 0.005, 10, 20), matGunMetal);
+      knifePommel.position.set(0.02, -0.048, -0.005);
+      knifePommel.rotation.y = Math.PI / 2;
+      knifeGroup.add(knifePommel);
+
+      // Crossguard / Hilt
+      const knifeGuard = new THREE.Mesh(new THREE.BoxGeometry(0.026, 0.068, 0.014), matGunMetal);
+      knifeGuard.position.set(0.02, 0.006, -0.142);
+      knifeGuard.rotation.x = -0.35;
+      knifeGroup.add(knifeGuard);
+
+      // Main Clip-Point Steel Blade
+      const knifeBlade = new THREE.Mesh(new THREE.BoxGeometry(0.007, 0.036, 0.24), matKnifeSteel);
+      knifeBlade.position.set(0.02, 0.048, -0.255);
+      knifeBlade.rotation.x = -0.35;
+      knifeGroup.add(knifeBlade);
+
+      // Razor Beveled Cutting Edge
+      const knifeBevel = new THREE.Mesh(new THREE.BoxGeometry(0.003, 0.012, 0.245), matKnifeEdge);
+      knifeBevel.position.set(0.02, 0.033, -0.258);
+      knifeBevel.rotation.x = -0.35;
+      knifeGroup.add(knifeBevel);
+
+      // Tapered Piercing Tip Cone
+      const knifeTip = new THREE.Mesh(new THREE.ConeGeometry(0.019, 0.068, 4), matKnifeEdge);
+      knifeTip.rotation.x = -Math.PI / 2 - 0.35;
+      knifeTip.rotation.z = Math.PI / 4;
+      knifeTip.position.set(0.02, 0.088, -0.382);
+      knifeGroup.add(knifeTip);
+
+      gunMeshGroup.add(knifeGroup);
+
       // Tactical IR Laser Sight Beam on Weapon Viewmodel
       const laserMat = new THREE.LineBasicMaterial({ color: 0x22c55e, transparent: true, opacity: 0.42 });
       const laserGeo = new THREE.BufferGeometry().setFromPoints([
@@ -2455,13 +2598,21 @@
       weaponRig.position.copy(HIP_POS);
       weaponRig.rotation.copy(HIP_ROT);
 
+      const KNIFE_SVG_PATH = 'M18 32l26-6 6-10 88-10-18 20-70 10-6 8-22 4-4-16z';
+
       function updateFirstPersonWeaponAppearance(wpnKey) {
+        const isKnife = (wpnKey === 'knife');
         mp5Group.visible = (wpnKey === 'mp5');
         ak47Group.visible = (wpnKey === 'ak47');
         shotgunGroup.visible = (wpnKey === 'shotgun');
         pistolGroup.visible = (wpnKey === 'pistol');
+        knifeGroup.visible = isKnife;
+        laserLine.visible = !isKnife;
 
-        if (wpnKey === 'pistol') {
+        if (isKnife) {
+          leftArmGroup.position.set(-0.04, -0.03, 0.12);
+          ADS_POS.set(0.12, -0.135, -0.26);
+        } else if (wpnKey === 'pistol') {
           leftArmGroup.position.set(0.02, -0.02, 0.16);
           muzzleFlashMesh.position.set(0, 0.055, -0.28);
           ADS_POS.set(0.0, -0.088, -0.22);
@@ -2809,10 +2960,16 @@
           grounded: true,
           mantling: false,
           mantleTimer: 0,
+          mantleStartX: 0,
+          mantleStartZ: 0,
           mantleStartY: 0,
           mantleTargetY: 0,
           mantleTargetX: 0,
           mantleTargetZ: 0,
+          hasKnife: false,
+          droppingGun: false,
+          dropGunTimer: 0,
+          knifeSlashTimer: 0,
           dying: false,
           deathTimer: 0,
           spectating: false,
@@ -2903,7 +3060,8 @@
         tracers: [],
         killParticles: [],
         shells: [],
-        decals: []
+        decals: [],
+        droppedGuns: []
       };
 
       // --- 10. CROSS-DEVICE WEBRTC (PEERJS) + BROADCASTCHANNEL ONLINE MULTIPLAYER ---
@@ -3343,6 +3501,10 @@
           if (tr.mat) tr.mat.dispose();
         });
         state.tracers.length = 0;
+        state.droppedGuns.forEach(dg => {
+          if (dg.mesh) scene.remove(dg.mesh);
+        });
+        state.droppedGuns.length = 0;
 
         const modeLabel = state.mode === 'tdm_1v1' ? '1v1 TDM' : (isTDM ? '2v2 TDM' : (is2v2 ? '2v2' : '1v1'));
         const btnNew = document.getElementById('btn-new-round');
@@ -3379,6 +3541,10 @@
         p.crouching = false;
         p.sliding = false;
         p.mantling = false;
+        p.hasKnife = false;
+        p.droppingGun = false;
+        p.dropGunTimer = 0;
+        p.knifeSlashTimer = 0;
         p.dying = false;
         p.deathTimer = 0;
         p.spectating = false;
@@ -3495,26 +3661,79 @@
         if (p.mantling || p.dying || state.countdownTime > 0) return null;
         const lookX = -Math.sin(p.yaw);
         const lookZ = -Math.cos(p.yaw);
-        const probeX = p.x + lookX * 0.95;
-        const probeZ = p.z + lookZ * 0.95;
+
+        let bestCandidate = null;
+        let bestDist = Infinity;
 
         for (let i = 0; i < wallColliders.length; i++) {
           const c = wallColliders[i];
           if (!c.mantleable) continue;
-          if (probeX >= c.minX - 0.35 && probeX <= c.maxX + 0.35 &&
-              probeZ >= c.minZ - 0.35 && probeZ <= c.maxZ + 0.35) {
-            const heightDiff = c.maxY - p.footY;
-            if (heightDiff >= 0.45 && heightDiff <= 2.55) {
-              return {
-                collider: c,
-                targetY: c.maxY,
-                targetX: Math.max(c.minX + 0.25, Math.min(c.maxX - 0.25, probeX)),
-                targetZ: Math.max(c.minZ + 0.25, Math.min(c.maxZ - 0.25, probeZ))
-              };
-            }
+
+          const heightDiff = c.maxY - p.footY;
+          // Allow mantling from ground OR mid-jump (0.12m to 2.65m above current feet)
+          if (heightDiff < 0.12 || heightDiff > 2.65) continue;
+
+          // Closest point on the obstacle AABB to the player
+          const nearX = Math.max(c.minX, Math.min(p.x, c.maxX));
+          const nearZ = Math.max(c.minZ, Math.min(p.z, c.maxZ));
+          const dx = nearX - p.x;
+          const dz = nearZ - p.z;
+          const distToBox = Math.hypot(dx, dz);
+
+          // Must be within 1.30m of the ledge face
+          if (distToBox > 1.30) continue;
+
+          // Vector from player toward obstacle center
+          const centerX = (c.minX + c.maxX) * 0.5;
+          const centerZ = (c.minZ + c.maxZ) * 0.5;
+          const toCenterX = centerX - p.x;
+          const toCenterZ = centerZ - p.z;
+          const toCenterLen = Math.hypot(toCenterX, toCenterZ) || 1;
+          const dotCenter = (toCenterX / toCenterLen) * lookX + (toCenterZ / toCenterLen) * lookZ;
+
+          // Also check dot product to nearest point on the ledge
+          const dotNear = distToBox > 0.04 ? ((dx / distToBox) * lookX + (dz / distToBox) * lookZ) : 1.0;
+
+          // Accept if looking roughly toward the obstacle (wide ~78 deg cone on mobile/PC, or very close <= 0.55m)
+          if (dotCenter < 0.20 && dotNear < 0.20 && distToBox > 0.55) continue;
+
+          if (distToBox < bestDist) {
+            bestDist = distToBox;
+            const boxW = c.maxX - c.minX;
+            const boxD = c.maxZ - c.minZ;
+            const marginX = Math.min(0.18, boxW * 0.35);
+            const marginZ = Math.min(0.18, boxD * 0.35);
+            const stepX = p.x + lookX * Math.max(0.68, distToBox + 0.32);
+            const stepZ = p.z + lookZ * Math.max(0.68, distToBox + 0.32);
+
+            bestCandidate = {
+              collider: c,
+              targetY: c.maxY,
+              targetX: Math.max(c.minX + marginX, Math.min(c.maxX - marginX, stepX)),
+              targetZ: Math.max(c.minZ + marginZ, Math.min(c.maxZ - marginZ, stepZ))
+            };
           }
         }
-        return null;
+        return bestCandidate;
+      }
+
+      function startPlayerMantle(p, candidate) {
+        p.mantling = true;
+        p.mantleTimer = 0.34;
+        p.mantleStartX = p.x;
+        p.mantleStartZ = p.z;
+        p.mantleStartY = p.footY;
+        p.mantleTargetY = candidate.targetY;
+        p.mantleTargetX = candidate.targetX;
+        p.mantleTargetZ = candidate.targetZ;
+        p.vx = 0;
+        p.vy = 0;
+        p.vz = 0;
+        p.grounded = false;
+        p.crouching = false;
+        p.sliding = false;
+        sfx.playMantle();
+        showCombatToast('MANTLING LEDGE...');
       }
 
       function triggerMantleOrJump() {
@@ -3532,16 +3751,7 @@
 
         const candidate = findMantleCandidate(p);
         if (candidate) {
-          p.mantling = true;
-          p.mantleTimer = 0.34;
-          p.mantleStartY = p.footY;
-          p.mantleTargetY = candidate.targetY;
-          p.mantleTargetX = candidate.targetX;
-          p.mantleTargetZ = candidate.targetZ;
-          p.vy = 0;
-          p.grounded = false;
-          sfx.playMantle();
-          showCombatToast('MANTLING LEDGE...');
+          startPlayerMantle(p, candidate);
           return;
         }
 
@@ -4397,6 +4607,11 @@
         p.sliding = false;
         p.sprinting = false;
         p.mantling = false;
+        p.hasKnife = false;
+        p.droppingGun = false;
+        p.dropGunTimer = 0;
+        p.knifeSlashTimer = 0;
+        applySharedLoadout(state.weaponKey, false);
         p.stunCount = 1;
         p.fragCount = 1;
         p.x = sp.x;
@@ -4506,10 +4721,144 @@
         }
       }
 
+      function spawnDroppedWeaponProp(wpnKey) {
+        const propGroup = new THREE.Group();
+        const bodyMat = wpnKey === 'ak47' ? matAkWood : (wpnKey === 'shotgun' ? matWalnut : (wpnKey === 'pistol' ? matTanSlide : matGunMetal));
+        const bodyLen = wpnKey === 'pistol' ? 0.24 : (wpnKey === 'shotgun' ? 0.68 : 0.56);
+        const bodyMesh = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.085, bodyLen), bodyMat);
+        bodyMesh.castShadow = true;
+        propGroup.add(bodyMesh);
+
+        const barrelMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, bodyLen * 0.75, 10), matGunMetal);
+        barrelMesh.rotation.x = Math.PI / 2;
+        barrelMesh.position.set(0, 0.03, -bodyLen * 0.35);
+        propGroup.add(barrelMesh);
+
+        if (wpnKey !== 'shotgun') {
+          const magMesh = new THREE.Mesh(new THREE.BoxGeometry(0.032, 0.16, 0.05), wpnKey === 'ak47' ? matBakelite : matGunPolymer);
+          magMesh.position.set(0, -0.09, -0.04);
+          magMesh.rotation.x = 0.25;
+          propGroup.add(magMesh);
+        }
+
+        const dropOffset = new THREE.Vector3(0.14, -0.18, -0.42).applyQuaternion(camera.quaternion);
+        propGroup.position.copy(camera.position).add(dropOffset);
+        propGroup.quaternion.copy(camera.quaternion);
+        scene.add(propGroup);
+
+        const fwd = new THREE.Vector3(0.15, -0.25, -1).applyQuaternion(camera.quaternion).normalize();
+        state.droppedGuns.push({
+          mesh: propGroup,
+          vx: fwd.x * 2.4,
+          vy: 0.8,
+          vz: fwd.z * 2.4,
+          rx: 5.5,
+          rz: 3.8,
+          floorY: (state.player.footY || 0) + 0.045,
+          settled: false
+        });
+      }
+
+      function triggerOutOfAmmoKnifeSwitch() {
+        const p = state.player;
+        if (p.hasKnife || p.droppingGun || !state.roundActive || p.dying) return;
+        p.droppingGun = true;
+        p.dropGunTimer = 0.48;
+        p.reloading = false;
+        p.ads = false;
+        p.fireCooldown = 0.48;
+
+        spawnDroppedWeaponProp(state.weaponKey);
+        sfx.playKnifeDraw();
+        showCombatToast('OUT OF AMMO — DROPPED GUN & DREW COMBAT KNIFE (1-STAB KILL)!');
+
+        document.getElementById('hud-weapon-name').textContent = 'COMBAT KNIFE (1-STAB KILL)';
+        document.getElementById('hud-weapon-svg').innerHTML = `<path d="${KNIFE_SVG_PATH}"/>`;
+        updateHUD();
+      }
+
+      function performPlayerKnifeStab() {
+        const p = state.player;
+        if (!state.roundActive || p.dying || p.droppingGun || p.fireCooldown > 0 || state.countdownTime > 0) return;
+
+        p.fireCooldown = 0.36;
+        p.knifeSlashTimer = 0.30;
+        p.ads = false;
+        state.shotsFired++;
+        sfx.playKnifeSwing();
+
+        // Subtle forward melee lunge impulse
+        const lookX = -Math.sin(p.yaw);
+        const lookZ = -Math.cos(p.yaw);
+        p.vx += lookX * 3.6;
+        p.vz += lookZ * 3.6;
+
+        // Check melee hit (raycast + generous 3.45m CQC lunge cone — 1-Stab Instant Kill!)
+        const activeEnemies = state.enemies.filter(e => e.active && e.hp > 0 && !e.dying);
+        let stabbedEnemy = null;
+        let bestDist = 3.45;
+
+        // 1. Center raycast check within 3.45m
+        scratchVec2.set(0, 0);
+        sharedPlayerRaycaster.setFromCamera(scratchVec2, camera);
+        const wallHits = sharedPlayerRaycaster.intersectObjects(cachedWallMeshes, false);
+        const wallDist = wallHits.length > 0 ? wallHits[0].distance : 100;
+
+        activeEnemies.forEach((enemy) => {
+          const hits = sharedPlayerRaycaster.intersectObjects(enemy.rig.hitMeshes, false);
+          if (hits.length > 0 && hits[0].distance <= bestDist && hits[0].distance < wallDist) {
+            bestDist = hits[0].distance;
+            stabbedEnemy = enemy;
+          }
+        });
+
+        // 2. Wide CQC melee cone fallback so close-range stabs connect reliably on mobile & PC
+        if (!stabbedEnemy) {
+          for (let i = 0; i < activeEnemies.length; i++) {
+            const en = activeEnemies[i];
+            const dx = en.x - p.x;
+            const dz = en.z - p.z;
+            const dy = (en.footY + 1.0) - (p.footY + 1.0);
+            const dist3D = Math.hypot(dx, dz, dy);
+            if (dist3D <= 3.35) {
+              const horizDist = Math.hypot(dx, dz) || 0.001;
+              const dot = (dx / horizDist) * lookX + (dz / horizDist) * lookZ;
+              if ((dot >= 0.52 || dist3D <= 1.65) && hasLineOfSight(p.x, p.footY + 1.5, p.z, en.x, en.footY + 1.4, en.z)) {
+                if (dist3D < bestDist) {
+                  bestDist = dist3D;
+                  stabbedEnemy = en;
+                }
+              }
+            }
+          }
+        }
+
+        if (stabbedEnemy) {
+          const stabDmg = Math.max(100, stabbedEnemy.hp);
+          stabbedEnemy.hp = 0;
+          stabbedEnemy.flinchTimer = 0.20;
+          state.damageDealt += 100;
+          state.shotsHit++;
+          sfx.playHitmarker(true);
+          triggerHitmarkerUI(true);
+          triggerGamepadRumble(0.90, 0.75, 130);
+
+          if (stabbedEnemy.id === 'enemy1') {
+            sendNetworkPayload({ type: 'peer_hit', dmg: stabDmg, attacker: state.username });
+          }
+          triggerOperatorDeath(stabbedEnemy, true);
+          updateHUD();
+        }
+      }
+
       function triggerReload() {
         const p = state.player;
         const wpn = WEAPONS[state.weaponKey];
-        if (!wpn || p.reloading || p.mag >= wpn.magSize || p.reserve <= 0 || !state.roundActive || p.dying) return;
+        if (!wpn || p.hasKnife || p.droppingGun || p.reloading || p.mag >= wpn.magSize || !state.roundActive || p.dying) return;
+        if (p.reserve <= 0) {
+          if (p.mag <= 0) triggerOutOfAmmoKnifeSwitch();
+          return;
+        }
         if (p._autoReloadTimeout) {
           clearTimeout(p._autoReloadTimeout);
           p._autoReloadTimeout = null;
@@ -4545,16 +4894,22 @@
       function attemptPlayerFire() {
         const p = state.player;
         const wpn = WEAPONS[state.weaponKey];
-        if (!state.roundActive || p.dying || p.reloading || p.fireCooldown > 0) return;
+        if (!state.roundActive || p.dying || p.reloading || p.droppingGun || p.fireCooldown > 0) return;
         // Firing is disabled until the 5-second countdown finishes!
         if (state.countdownTime > 0) return;
+
+        // If player has already dropped their empty gun and drawn the Combat Knife, perform a 1-stab-kill melee attack!
+        if (p.hasKnife) {
+          performPlayerKnifeStab();
+          return;
+        }
 
         if (p.mag <= 0) {
           p.fireCooldown = 0.24;
           if (p.reserve > 0) {
             triggerReload();
           } else {
-            showCombatToast('OUT OF AMMO!');
+            triggerOutOfAmmoKnifeSwitch();
           }
           return;
         }
@@ -4649,12 +5004,20 @@
         }
 
         updateHUD();
-        if (p.mag === 0 && p.reserve > 0 && !p.reloading) {
-          if (p._autoReloadTimeout) clearTimeout(p._autoReloadTimeout);
-          p._autoReloadTimeout = setTimeout(() => {
-            p._autoReloadTimeout = null;
-            triggerReload();
-          }, 180);
+        if (p.mag === 0) {
+          if (p.reserve > 0 && !p.reloading) {
+            if (p._autoReloadTimeout) clearTimeout(p._autoReloadTimeout);
+            p._autoReloadTimeout = setTimeout(() => {
+              p._autoReloadTimeout = null;
+              triggerReload();
+            }, 180);
+          } else if (p.reserve <= 0 && !p.hasKnife && !p.droppingGun) {
+            if (p._autoReloadTimeout) clearTimeout(p._autoReloadTimeout);
+            p._autoReloadTimeout = setTimeout(() => {
+              p._autoReloadTimeout = null;
+              triggerOutOfAmmoKnifeSwitch();
+            }, 140);
+          }
         }
       }
 
@@ -5200,8 +5563,13 @@
           setHudText('tdm-enemy-score', state.tdmEnemyKills);
         }
 
-        setHudText('hud-ammo-mag', p.mag);
-        setHudText('hud-ammo-reserve', p.reserve);
+        setHudText('hud-ammo-mag', p.hasKnife ? '∞' : p.mag);
+        setHudText('hud-ammo-reserve', p.hasKnife ? '1-HIT' : p.reserve);
+        const fireBtnSpan = document.querySelector('#codm-btn-fire span');
+        if (fireBtnSpan) {
+          const targetFireLbl = p.hasKnife ? 'STAB' : 'FIRE';
+          if (fireBtnSpan.textContent !== targetFireLbl) fireBtnSpan.textContent = targetFireLbl;
+        }
         setHudText('hud-stun-count', p.stunCount);
         setHudText('hud-frag-count', p.fragCount);
         setHudText('hud-kills', state.kills);
@@ -5582,17 +5950,35 @@
 
           const mantleCand = findMantleCandidate(p);
           document.getElementById('mantle-prompt').classList.toggle('hidden', !mantleCand);
+          const mobileJumpSpan = document.querySelector('#codm-btn-jump span');
+          if (mobileJumpSpan) {
+            const jLbl = mantleCand ? 'MANTLE' : 'JUMP';
+            if (mobileJumpSpan.textContent !== jLbl) mobileJumpSpan.textContent = jLbl;
+          }
+
+          // If player is mid-jump and pushing forward into a mantleable ledge, automatically vault onto it!
+          if (!p.mantling && !p.grounded && p.vy > -2.5 && moveForward > 0.35 && mantleCand) {
+            startPlayerMantle(p, mantleCand);
+          }
 
           if (p.mantling) {
             p.mantleTimer -= dt;
-            const prog = 1 - Math.max(0, p.mantleTimer / 0.34);
-            p.footY = THREE.MathUtils.lerp(p.mantleStartY, p.mantleTargetY, prog);
-            p.x = THREE.MathUtils.lerp(p.x, p.mantleTargetX, dt * 12);
-            p.z = THREE.MathUtils.lerp(p.z, p.mantleTargetZ, dt * 12);
-            resolveWorldCollisions(p, 0.36);
+            const prog = Math.min(1, Math.max(0, 1 - p.mantleTimer / 0.34));
+            // Fast vertical lift curve so feet clear the top edge before sliding onto the surface
+            const liftEase = 1 - Math.pow(1 - prog, 2.4);
+            const moveEase = prog * prog * (3 - 2 * prog);
+            p.footY = THREE.MathUtils.lerp(p.mantleStartY, p.mantleTargetY, liftEase);
+            p.x = THREE.MathUtils.lerp(p.mantleStartX, p.mantleTargetX, moveEase);
+            p.z = THREE.MathUtils.lerp(p.mantleStartZ, p.mantleTargetZ, moveEase);
+            // Clamp only to outer room perimeter while vaulting onto the obstacle
+            p.x = Math.max(-10.62, Math.min(10.62, p.x));
+            p.z = Math.max(-16.62, Math.min(16.62, p.z));
             if (p.mantleTimer <= 0) {
               p.mantling = false;
               p.footY = p.mantleTargetY;
+              p.x = p.mantleTargetX;
+              p.z = p.mantleTargetZ;
+              p.vy = 0;
               p.grounded = true;
               resolveWorldCollisions(p, 0.36);
             }
@@ -5697,8 +6083,24 @@
           camera.rotation.x = p.pitch + p.recoilPitchAccum - mantleDip * 0.6;
           camera.rotation.z = p.lean + (p.sliding ? 0.08 : 0);
 
-          // 3. Snappy Tactical FPS ADS & Weapon Animations
-          const targetAds = p.ads ? 1 : 0;
+          // 3. Snappy Tactical FPS ADS, Gun-Drop, & Combat Knife Animations
+          if (p.droppingGun) {
+            p.dropGunTimer -= dt;
+            if (p.dropGunTimer <= 0.24 && !p.hasKnife) {
+              p.hasKnife = true;
+              updateFirstPersonWeaponAppearance('knife');
+              updateHUD();
+            }
+            if (p.dropGunTimer <= 0) {
+              p.droppingGun = false;
+              p.dropGunTimer = 0;
+            }
+          }
+          if (p.knifeSlashTimer > 0) {
+            p.knifeSlashTimer = Math.max(0, p.knifeSlashTimer - dt);
+          }
+
+          const targetAds = (p.ads && !p.hasKnife && !p.droppingGun) ? 1 : 0;
           p.adsBlend += (targetAds - p.adsBlend) * Math.min(1, dt * 22);
 
           const swayX = Math.cos(p.bobPhase) * (isMoving ? 0.010 : 0.002) * (1 - p.adsBlend * 0.8);
@@ -5707,9 +6109,20 @@
           const reloadProg = p.reloading ? (1 - p.reloadTimer / wpn.reloadDuration) : 0;
           const reloadDipY = p.reloading ? -0.10 * Math.sin(reloadProg * Math.PI) : 0;
 
-          const targetPosX = THREE.MathUtils.lerp(HIP_POS.x, ADS_POS.x, p.adsBlend) + swayX;
-          const targetPosY = THREE.MathUtils.lerp(HIP_POS.y, ADS_POS.y, p.adsBlend) - swayY + reloadDipY - mantleDip * 0.35;
-          const targetPosZ = THREE.MathUtils.lerp(HIP_POS.z, ADS_POS.z, p.adsBlend);
+          // Gun-drop & knife-draw vertical dip
+          const dropDipY = p.droppingGun ? -0.26 * Math.sin((1 - p.dropGunTimer / 0.48) * Math.PI) : 0;
+          const dropPitchX = p.droppingGun ? -0.75 * Math.sin((1 - p.dropGunTimer / 0.48) * Math.PI) : 0;
+
+          // Visceral 1-stab-kill forward lunge & slash arc
+          const slashCurve = p.knifeSlashTimer > 0 ? Math.sin((1 - p.knifeSlashTimer / 0.30) * Math.PI) : 0;
+          const stabThrustZ = -slashCurve * 0.19;
+          const stabSweepX = -slashCurve * 0.08;
+          const stabPitchX = slashCurve * 0.52;
+          const stabYawY = slashCurve * 0.38;
+
+          const targetPosX = THREE.MathUtils.lerp(HIP_POS.x, ADS_POS.x, p.adsBlend) + swayX + stabSweepX;
+          const targetPosY = THREE.MathUtils.lerp(HIP_POS.y, ADS_POS.y, p.adsBlend) - swayY + reloadDipY + dropDipY - mantleDip * 0.35;
+          const targetPosZ = THREE.MathUtils.lerp(HIP_POS.z, ADS_POS.z, p.adsBlend) + stabThrustZ;
 
           weaponRig.position.x += (targetPosX - weaponRig.position.x) * Math.min(1, dt * 24);
           weaponRig.position.y += (targetPosY - weaponRig.position.y) * Math.min(1, dt * 24);
@@ -5719,9 +6132,9 @@
           const sprintTiltY = p.sprinting ? 0.42 : 0;
           const reloadTiltZ = p.reloading ? -0.48 * Math.sin(reloadProg * Math.PI) : 0;
 
-          weaponRig.rotation.x += (THREE.MathUtils.lerp(HIP_ROT.x, ADS_ROT.x, p.adsBlend) + sprintTiltX - weaponRig.rotation.x) * Math.min(1, dt * 20);
-          weaponRig.rotation.y += (THREE.MathUtils.lerp(HIP_ROT.y, ADS_ROT.y, p.adsBlend) + sprintTiltY - weaponRig.rotation.y) * Math.min(1, dt * 20);
-          weaponRig.rotation.z += (THREE.MathUtils.lerp(HIP_ROT.z, ADS_ROT.z, p.adsBlend) + reloadTiltZ - weaponRig.rotation.z) * Math.min(1, dt * 20);
+          weaponRig.rotation.x += (THREE.MathUtils.lerp(HIP_ROT.x, ADS_ROT.x, p.adsBlend) + sprintTiltX + dropPitchX + stabPitchX - weaponRig.rotation.x) * Math.min(1, dt * 22);
+          weaponRig.rotation.y += (THREE.MathUtils.lerp(HIP_ROT.y, ADS_ROT.y, p.adsBlend) + sprintTiltY + stabYawY - weaponRig.rotation.y) * Math.min(1, dt * 22);
+          weaponRig.rotation.z += (THREE.MathUtils.lerp(HIP_ROT.z, ADS_ROT.z, p.adsBlend) + reloadTiltZ - weaponRig.rotation.z) * Math.min(1, dt * 22);
 
           const magOffset = p.reloading ? -Math.sin(reloadProg * Math.PI) * 0.18 : 0;
           mp5Mag.position.y = -0.11 + magOffset;
@@ -5802,6 +6215,32 @@
             scene.remove(g.mesh);
             state.projectiles.splice(i, 1);
             updateHUD();
+          }
+        }
+
+        for (let i = state.droppedGuns.length - 1; i >= 0; i--) {
+          const dg = state.droppedGuns[i];
+          if (!dg.settled) {
+            dg.vy -= 14.5 * dt;
+            dg.mesh.position.x += dg.vx * dt;
+            dg.mesh.position.y += dg.vy * dt;
+            dg.mesh.position.z += dg.vz * dt;
+            dg.mesh.rotation.x += dg.rx * dt;
+            dg.mesh.rotation.z += dg.rz * dt;
+            if (dg.mesh.position.y <= dg.floorY) {
+              dg.mesh.position.y = dg.floorY;
+              if (Math.abs(dg.vy) > 0.8) {
+                dg.vy = -dg.vy * 0.32;
+                dg.vx *= 0.45;
+                dg.vz *= 0.45;
+                dg.rx *= 0.5;
+                dg.rz *= 0.5;
+              } else {
+                dg.mesh.rotation.x = 0;
+                dg.mesh.rotation.z = Math.PI / 2;
+                dg.settled = true;
+              }
+            }
           }
         }
 
@@ -6318,13 +6757,18 @@
         btnAds.addEventListener('touchstart', toggleAds, { passive: false });
         btnAds.addEventListener('click', toggleAds);
 
-        // Jump / Mantle Button
+        // Jump / Mantle Button & Tappable Mantle Prompt Banner
         const onJumpTap = (e) => {
           if (e) e.preventDefault();
           triggerMantleOrJump();
         };
         btnJump.addEventListener('touchstart', onJumpTap, { passive: false });
         btnJump.addEventListener('click', onJumpTap);
+        const mantleBannerEl = document.getElementById('mantle-prompt');
+        if (mantleBannerEl) {
+          mantleBannerEl.addEventListener('touchstart', onJumpTap, { passive: false });
+          mantleBannerEl.addEventListener('click', onJumpTap);
+        }
 
         // Crouch / Slide Button
         const onCrouchTap = (e) => {
