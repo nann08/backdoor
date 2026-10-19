@@ -102,7 +102,7 @@
       position: absolute;
       background: rgba(255, 255, 255, 0.85);
       box-shadow: 0 0 2px rgba(0, 0, 0, 0.9);
-      transition: transform 0.04s linear, opacity 0.1s ease;
+      will-change: transform;
     }
     /* Hitmarker X */
     #hitmarker {
@@ -287,7 +287,7 @@
 <body>
   <div id="game-container">
     <!-- 3D WebGL Viewport -->
-    <canvas id="webgl-canvas"></canvas>
+    <canvas id="webgl-canvas" tabindex="-1" class="focus:outline-none"></canvas>
 
     <!-- Atmospheric & Damage Overlays -->
     <div class="vignette-layer"></div>
@@ -496,7 +496,7 @@
       <!-- Pre-Round Extended Countdown & Overtime Flag Capture Overlay -->
       <div class="absolute top-14 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none">
         <div id="countdown-banner" class="hidden bg-black/85 border border-amber-400/60 px-3.5 py-1 rounded-xs mb-1.5 text-center shadow-lg">
-          <div class="text-[8px] font-mono-cod text-amber-300 tracking-widest uppercase">MOVEMENT LOCKED — FREE LOOK & SELECT LOADOUT</div>
+          <div class="text-[8px] font-mono-cod text-amber-300 tracking-widest uppercase">WEAPONS LOCKED — MOVE, SPRINT, LOOK & SELECT LOADOUT</div>
           <div id="countdown-number" class="font-cod text-xl font-bold text-white tracking-wider">5</div>
         </div>
 
@@ -777,7 +777,7 @@
       <!-- 7C. iOS MULTI-TOUCH HUD OVERLAY (ERGONOMIC SPACING + TACTICAL VECTOR SYMBOLS, NO EMOJIS) -->
       <div id="cod-mobile-hud" class="interactive-hud hidden absolute inset-0 z-20 pointer-events-none select-none">
         <!-- Right-Half Touch-Look Aiming Zone -->
-        <div id="codm-look-zone" class="absolute top-12 right-0 w-[62%] h-[88%] pointer-events-auto"></div>
+        <div id="codm-look-zone" class="absolute inset-0 w-full h-full pointer-events-auto"></div>
 
         <!-- Left-Thumb Virtual Movement Joystick + Auto-Sprint Indicator -->
         <div id="codm-joy-zone" class="absolute bottom-6 left-6 w-32 h-32 pointer-events-auto flex items-center justify-center">
@@ -785,7 +785,7 @@
             <div id="codm-sprint-badge" class="opacity-0 transition-opacity absolute -top-6 text-[9px] font-mono-cod text-amber-300 bg-black/75 px-1.5 py-0.5 rounded-xs border border-amber-400/40">
               SPRINT LOCK
             </div>
-            <div id="codm-joy-knob" class="w-11 h-11 rounded-full bg-amber-400/80 border-2 border-white shadow-lg transition-transform duration-75 flex items-center justify-center">
+            <div id="codm-joy-knob" class="w-11 h-11 rounded-full bg-amber-400/80 border-2 border-white shadow-lg flex items-center justify-center" style="will-change: transform;">
               <svg class="w-4 h-4 text-black/80" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 3l4 5h-8l4-5zm0 18l-4-5h8l-4 5zM3 12l5-4v8l-5-4zm18 0l-5 4V8l5 4z"/>
               </svg>
@@ -1962,76 +1962,88 @@
         const steps = 14;
         const dz = (zEnd - zStart) / steps;
         const dy = UPPER_Y / steps;
-        const stepDepth = Math.abs(dz) * 1.05;
+        // Exact non-overlapping step depth eliminates 100% of Z-fighting between adjacent steps!
+        const stepDepth = Math.abs(dz) * 0.996;
+        const treadHeight = 0.036;
 
         for (let i = 0; i < steps; i++) {
-          const stepY = (i + 0.5) * dy;
+          const stepTopY = (i + 1) * dy;
+          const riserH = Math.max(0.04, stepTopY - treadHeight);
           const stepZ = zStart + (i + 0.5) * dz;
+
+          // Solid concrete/tile riser column (uniform material + slight Y offset above 0 to prevent floor Z-fighting)
           const stepMesh = new THREE.Mesh(
-            new THREE.BoxGeometry(width, stepY, stepDepth),
-            i % 2 === 0 ? matWallCover : matCrateWood
+            new THREE.BoxGeometry(width - 0.02, riserH, stepDepth),
+            matWallCover
           );
-          stepMesh.position.set(xCenter, stepY / 2, stepZ);
+          stepMesh.position.set(xCenter, riserH / 2 + 0.002, stepZ);
           stepMesh.castShadow = true;
           stepMesh.receiveShadow = true;
           scene.add(stepMesh);
+
+          // Distinct wooden stair tread plank sitting cleanly on top of the riser (zero coplanar faces!)
+          const treadMesh = new THREE.Mesh(
+            new THREE.BoxGeometry(width, treadHeight, stepDepth * 0.96),
+            matCrateWood
+          );
+          treadMesh.position.set(xCenter, stepTopY - treadHeight / 2, stepZ);
+          treadMesh.receiveShadow = true;
+          scene.add(treadMesh);
         }
 
-        // 1. Solid vertical back wall under the top landing (zEnd) of the stairs:
-        // Visual mesh is full height (3.1m); collider maxY is 2.05m so ground-floor players (footY < 2m)
-        // cannot walk through the back wall of the stairs, while players running up the stairs (footY > 2.2m near zEnd)
-        // pass smoothly onto the 2nd-floor catwalk with zero obstruction!
-        const backWallZ = zEnd > zStart ? zEnd - 0.12 : zEnd + 0.12;
+        // 1. Thin back-wall support panel at zEnd ONLY (never spans midZ..zEnd so nothing blocks walking up the staircase!):
+        // Stops 1st-floor players (footY < 0.95m) from walking through the back face under the top landing,
+        // while players walking up the staircase have unimpeded smooth elevation from bottom (zStart) to top (zEnd)!
+        const backWallZ = zEnd > zStart ? zEnd - 0.06 : zEnd + 0.06;
         const backWallMesh = new THREE.Mesh(
-          new THREE.BoxGeometry(width, UPPER_Y, 0.24),
+          new THREE.BoxGeometry(width - 0.04, UPPER_Y - 0.02, 0.12),
           matWallCover
         );
         backWallMesh.position.set(xCenter, UPPER_Y / 2, backWallZ);
-        backWallMesh.castShadow = true;
-        backWallMesh.receiveShadow = true;
         scene.add(backWallMesh);
 
         wallColliders.push({
-          minX: xCenter - width / 2 + 0.04,
-          maxX: xCenter + width / 2 - 0.04,
-          minZ: backWallZ - 0.14,
-          maxZ: backWallZ + 0.14,
+          minX: xCenter - width / 2 + 0.06,
+          maxX: xCenter + width / 2 - 0.06,
+          minZ: backWallZ - 0.06,
+          maxZ: backWallZ + 0.06,
           minY: 0,
-          maxY: 2.05,
+          maxY: 0.95,
           mapType: 'wall',
           mantleable: false,
           mesh: backWallMesh
         });
 
-        // 2. Thin side guardrail colliders flush with the stair edges (stops walking sideways through the stairs
-        // while keeping both the stair tread path and the 1.10m outer wall squeeze gap completely clear!)
+        // 2. Side guardrail colliders flush with the stair edges, inset at both ends so entry/exit never snags
         const isLeft = xCenter < 0;
         const outerEdgeX = isLeft ? xCenter - width / 2 : xCenter + width / 2;
         const innerEdgeX = isLeft ? xCenter + width / 2 : xCenter - width / 2;
         const minZ = Math.min(zStart, zEnd);
         const maxZ = Math.max(zStart, zEnd);
+        const railMinZ = minZ + 0.24;
+        const railMaxZ = maxZ - 0.24;
 
-        // Inner side rail collider (inset slightly from zStart/zEnd entrances so entering/exiting stairs is effortless)
+        // Inner side rail collider
         wallColliders.push({
-          minX: innerEdgeX - 0.05,
-          maxX: innerEdgeX + 0.05,
-          minZ: minZ + 0.35,
-          maxZ: maxZ - 0.35,
+          minX: innerEdgeX - 0.035,
+          maxX: innerEdgeX + 0.035,
+          minZ: railMinZ,
+          maxZ: railMaxZ,
           minY: 0,
-          maxY: UPPER_Y + 0.85,
+          maxY: UPPER_Y + 0.90,
           mapType: 'railing',
           mantleable: false,
           mesh: null
         });
 
-        // Outer side rail collider (flush with outer stair edge so the 1.10m squeeze gap to the wall is open)
+        // Outer side rail collider
         wallColliders.push({
-          minX: outerEdgeX - 0.04,
-          maxX: outerEdgeX + 0.04,
-          minZ: minZ + 0.35,
-          maxZ: maxZ - 0.35,
+          minX: outerEdgeX - 0.035,
+          maxX: outerEdgeX + 0.035,
+          minZ: railMinZ,
+          maxZ: railMaxZ,
           minY: 0,
-          maxY: UPPER_Y + 0.85,
+          maxY: UPPER_Y + 0.90,
           mapType: 'railing',
           mantleable: false,
           mesh: null
@@ -2054,7 +2066,6 @@
           );
           topRail.position.set(rx, riseY / 2 + 0.92, (zStart + zEnd) / 2);
           topRail.rotation.x = Math.PI / 2 + slopeAngle;
-          topRail.castShadow = true;
           scene.add(topRail);
 
           const midRail = new THREE.Mesh(
@@ -2076,17 +2087,16 @@
               matDarkIron
             );
             postMesh.position.set(rx, pyBase + postH / 2, pz);
-            postMesh.castShadow = true;
             scene.add(postMesh);
           }
         });
 
-        // Walkable stair surface strictly between the handrails so players in the side squeeze gap stay on 1F
+        // Walkable stair ramp surface with generous top/bottom Z padding and side margin inside the rails
         walkableSurfaces.push({
-          minX: xCenter - width / 2 - 0.02,
-          maxX: xCenter + width / 2 + 0.02,
-          minZ: minZ - 0.35,
-          maxZ: maxZ + 0.35,
+          minX: xCenter - width / 2 - 0.06,
+          maxX: xCenter + width / 2 + 0.06,
+          minZ: minZ - 0.42,
+          maxZ: maxZ + 0.42,
           getY: (px, pz) => {
             const t = Math.max(0, Math.min(1, (pz - zStart) / (zEnd - zStart)));
             return t * UPPER_Y;
@@ -2129,9 +2139,12 @@
       scene.add(flagGroup);
 
       // --- 6. LIGHTING, DYNAMIC MUZZLE POINT LIGHT & DUST ---
-      scene.add(new THREE.AmbientLight(0x9a8b50, 0.95));
+      scene.add(new THREE.AmbientLight(0x9a8b50, 1.15));
+      const hemiLight = new THREE.HemisphereLight(0xffe88a, 0x3b3114, 1.45);
+      hemiLight.position.set(0, WALL_H, 0);
+      scene.add(hemiLight);
 
-      // Framed recessed center light fixture (replaces giant outlying white rectangle)
+      // Framed recessed center light fixture
       const centerFixtureFrame = new THREE.Mesh(
         new THREE.BoxGeometry(1.8, 0.08, 2.4),
         matDarkIron
@@ -2145,12 +2158,12 @@
       centerSkylight.position.set(0, WALL_H - 0.05, 1.5);
       scene.add(centerSkylight);
 
-      const centerSpot = new THREE.SpotLight(0xfff4c2, 18.0, 34, Math.PI / 3, 0.55, 1.5);
+      const centerSpot = new THREE.SpotLight(0xfff4c2, 16.0, 34, Math.PI / 3, 0.55, 1.5);
       centerSpot.position.set(0, WALL_H - 0.2, 1.5);
       centerSpot.target.position.set(0, 0, 1.5);
-      centerSpot.castShadow = true;
-      centerSpot.shadow.mapSize.width = 1024;
-      centerSpot.shadow.mapSize.height = 1024;
+      centerSpot.castShadow = false;
+      centerSpot.shadow.mapSize.width = 512;
+      centerSpot.shadow.mapSize.height = 512;
       scene.add(centerSpot);
       scene.add(centerSpot.target);
 
@@ -2177,6 +2190,7 @@
         [-8.5, 0], [8.5, 0],
         [0, -12.5], [-6.5, -11.5], [6.5, -11.5]
       ];
+      // Build all 8 ceiling light fixture meshes, but attach only 2 actual PointLights (North & South) so fragment shaders run 3x faster with zero input lag!
       lightCoords.forEach(([lx, lz], idx) => {
         const bezel = new THREE.Mesh(
           new THREE.BoxGeometry(1.46, 0.07, 0.72),
@@ -2191,10 +2205,12 @@
         panel.position.set(lx, WALL_H - 0.055, lz);
         scene.add(panel);
 
-        const pt = new THREE.PointLight(0xffe88a, 7.5, 18, 1.6);
-        pt.position.set(lx, WALL_H - 0.35, lz);
-        scene.add(pt);
-        fluorescentLights.push({ light: pt, panel, baseIntensity: 7.5, flickerSeed: idx * 1.7 });
+        if (idx === 0 || idx === 5) {
+          const pt = new THREE.PointLight(0xffe88a, 11.5, 24, 1.5);
+          pt.position.set(lx, WALL_H - 0.35, lz);
+          scene.add(pt);
+          fluorescentLights.push({ light: pt, panel, baseIntensity: 11.5, flickerSeed: idx * 1.7 });
+        }
       });
 
       const dustGeo = new THREE.BufferGeometry();
@@ -2263,35 +2279,35 @@
       const gunMeshGroup = new THREE.Group();
       weaponRig.add(gunMeshGroup);
 
+      // Sculpted Left Support Arm & Hand
       const leftArmGroup = new THREE.Group();
-      const sleeveCuff = new THREE.Mesh(new THREE.CylinderGeometry(0.068, 0.082, 0.34, 20), matSleeveOlive);
-      sleeveCuff.position.set(-0.14, -0.22, -0.06);
-      sleeveCuff.rotation.z = -0.48;
-      sleeveCuff.rotation.x = 0.62;
+      const sleeveCuff = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.058, 0.28, 20), matSleeveOlive);
+      sleeveCuff.position.set(-0.095, -0.18, -0.10);
+      sleeveCuff.rotation.z = -0.38;
+      sleeveCuff.rotation.x = 0.72;
       leftArmGroup.add(sleeveCuff);
 
-      const cuffRoll = new THREE.Mesh(new THREE.TorusGeometry(0.064, 0.018, 14, 24), matSleeveOlive);
-      cuffRoll.position.set(-0.085, -0.125, -0.155);
-      cuffRoll.rotation.x = 0.8;
-      cuffRoll.rotation.y = 0.4;
+      const cuffRoll = new THREE.Mesh(new THREE.TorusGeometry(0.046, 0.012, 14, 24), matSleeveOlive);
+      cuffRoll.position.set(-0.052, -0.095, -0.20);
+      cuffRoll.rotation.x = 0.75;
+      cuffRoll.rotation.y = 0.35;
       leftArmGroup.add(cuffRoll);
 
-      const wristSkin = new THREE.Mesh(new THREE.CylinderGeometry(0.049, 0.056, 0.14, 20), matSkin);
-      wristSkin.position.set(-0.058, -0.075, -0.215);
-      wristSkin.rotation.z = -0.42;
-      wristSkin.rotation.x = 0.72;
+      const wristSkin = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.040, 0.10, 20), matSkin);
+      wristSkin.position.set(-0.032, -0.058, -0.245);
+      wristSkin.rotation.z = -0.35;
+      wristSkin.rotation.x = 0.78;
       leftArmGroup.add(wristSkin);
 
-      const glovePalm = new THREE.Mesh(new THREE.BoxGeometry(0.088, 0.078, 0.115), matGlove);
-      glovePalm.position.set(-0.022, -0.015, -0.285);
-      glovePalm.rotation.z = -0.25;
-      glovePalm.rotation.y = 0.18;
+      const glovePalm = new THREE.Mesh(new THREE.SphereGeometry(0.036, 18, 16), matSkin);
+      glovePalm.scale.set(0.85, 0.65, 1.38);
+      glovePalm.position.set(-0.012, -0.022, -0.295);
       leftArmGroup.add(glovePalm);
 
-      const gloveThumb = new THREE.Mesh(new THREE.BoxGeometry(0.032, 0.036, 0.075), matGlove);
-      gloveThumb.position.set(-0.038, 0.025, -0.305);
-      gloveThumb.rotation.x = -0.25;
-      gloveThumb.rotation.z = -0.3;
+      const gloveThumb = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.010, 0.048, 12), matSkin);
+      gloveThumb.position.set(-0.022, 0.008, -0.28);
+      gloveThumb.rotation.z = 0.68;
+      gloveThumb.rotation.x = 0.42;
       leftArmGroup.add(gloveThumb);
       gunMeshGroup.add(leftArmGroup);
 
@@ -2511,7 +2527,7 @@
       pistolGroup.add(psBarrel);
       gunMeshGroup.add(pistolGroup);
 
-      // 7E. BESPOKE M9 BAYONET / SPEC-OPS COMBAT KNIFE + FULL RIGHT FOREARM & ARTICULATED GLOVED HAND
+      // 7E. BESPOKE M9 BAYONET / SPEC-OPS COMBAT KNIFE + COAXIAL ANATOMICAL RIGHT HAND & FOREARM
       const knifeGroup = new THREE.Group();
       knifeGroup.visible = false;
 
@@ -2542,91 +2558,72 @@
         metalness: 0.18
       });
 
-      // 1. Right Forearm Sleeve, Rolled Cuff, Tactical Wristwatch & Skin Wrist
-      const rightArmSub = new THREE.Group();
-      const rSleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.064, 0.078, 0.32, 20), matSleeveOlive);
-      rSleeve.position.set(0.11, -0.19, 0.14);
-      rSleeve.rotation.x = 0.78;
-      rSleeve.rotation.z = 0.32;
-      rightArmSub.add(rSleeve);
-
-      const rCuff = new THREE.Mesh(new THREE.TorusGeometry(0.060, 0.016, 14, 24), matSleeveOlive);
-      rCuff.position.set(0.068, -0.105, 0.032);
-      rCuff.rotation.x = 0.82;
-      rCuff.rotation.y = -0.30;
-      rightArmSub.add(rCuff);
-
-      const rWrist = new THREE.Mesh(new THREE.CylinderGeometry(0.046, 0.052, 0.12, 20), matSkin);
-      rWrist.position.set(0.048, -0.068, -0.018);
-      rWrist.rotation.x = 0.82;
-      rWrist.rotation.z = 0.26;
-      rightArmSub.add(rWrist);
-
-      // Tactical Operator Watch on Right Wrist
-      const watchStrap = new THREE.Mesh(new THREE.CylinderGeometry(0.049, 0.049, 0.026, 18), matGunPolymer);
-      watchStrap.position.set(0.052, -0.075, -0.008);
-      watchStrap.rotation.x = 0.82;
-      watchStrap.rotation.z = 0.26;
-      rightArmSub.add(watchStrap);
-
-      const watchFace = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.008, 16), matTritium);
-      watchFace.position.set(0.026, -0.056, -0.012);
-      watchFace.rotation.z = 0.65;
-      rightArmSub.add(watchFace);
-
-      // Articulated Right Tactical Glove (Palm + Knuckle Guard + 4 Curled Fingers + Thumb)
-      const rGlovePalm = new THREE.Mesh(new THREE.BoxGeometry(0.076, 0.068, 0.096), matGlove);
-      rGlovePalm.position.set(0.025, -0.032, -0.072);
-      rGlovePalm.rotation.set(0.32, -0.12, 0.15);
-      rightArmSub.add(rGlovePalm);
-
-      const rKnucklePlate = new THREE.Mesh(new THREE.BoxGeometry(0.078, 0.018, 0.074), matGunPolymer);
-      rKnucklePlate.position.set(0.042, -0.018, -0.076);
-      rKnucklePlate.rotation.set(0.32, -0.12, 0.45);
-      rightArmSub.add(rKnucklePlate);
-
-      for (let f = 0; f < 4; f++) {
-        const finger = new THREE.Mesh(new THREE.CylinderGeometry(0.0105, 0.0095, 0.058, 12), matGlove);
-        finger.position.set(-0.004, -0.012 - f * 0.012, -0.098 + f * 0.018);
-        finger.rotation.set(0.25, 0.15, Math.PI / 2 - 0.2);
-        rightArmSub.add(finger);
-      }
-
-      const rThumb = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.010, 0.056, 12), matGlove);
-      rThumb.position.set(0.004, 0.012, -0.105);
-      rThumb.rotation.set(-0.45, 0.25, 0.35);
-      rightArmSub.add(rThumb);
-      knifeGroup.add(rightArmSub);
-
-      // 2. Pivot Group for the M9 Bayonet / Spec-Ops Blade (allows smooth draw-spin & wrist-snap animations)
+      // Unified Pivot Group for M9 Bayonet + Coaxial Right Hand & Forearm
+      // Positive X rotation (+0.34 rad) tilts the blade (-Z) naturally UPWARD & FORWARD while the handle/forearm (+Z) angles down toward the player's right wrist!
       const knifeBladePivot = new THREE.Group();
-      knifeBladePivot.position.set(0.014, -0.018, -0.082);
-      knifeBladePivot.rotation.set(-0.42, 0.08, -0.06);
+      knifeBladePivot.position.set(0.015, -0.022, -0.055);
+      knifeBladePivot.rotation.set(0.34, 0.20, -0.08);
 
-      // Contoured G10 Micarta Handle Core + 6 Ribbed Traction Rings
+      // 1. Contoured G10 Micarta Handle Core + 6 Ribbed Traction Rings (Along local Z axis: z = -0.054 to +0.078)
       const kHandleCore = new THREE.Mesh(new THREE.CylinderGeometry(0.0165, 0.0185, 0.132, 20), matGripG10);
       kHandleCore.rotation.x = Math.PI / 2;
-      kHandleCore.position.set(0, 0, 0.01);
+      kHandleCore.position.set(0, 0, 0.012);
       knifeBladePivot.add(kHandleCore);
 
       for (let r = 0; r < 6; r++) {
-        const gripRing = new THREE.Mesh(new THREE.TorusGeometry(0.0178, 0.0026, 10, 20), matGunPolymer);
+        const gripRing = new THREE.Mesh(new THREE.TorusGeometry(0.0178, 0.0024, 10, 20), matGunPolymer);
         gripRing.position.set(0, 0, 0.058 - r * 0.019);
         knifeBladePivot.add(gripRing);
       }
 
-      // Machined Steel Pommel Cap & Karambit Finger Ring
+      // 2. Clean Right Hand & Forearm Matching Left Hand's Simple 5-Part Structure (Sleeve + Cuff + Wrist + Smooth Palm Sphere + Thumb Cylinder)
+      const rightArmSub = new THREE.Group();
+
+      const rSleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.044, 0.055, 0.28, 20), matSleeveOlive);
+      rSleeve.rotation.x = Math.PI / 2 + 0.16;
+      rSleeve.rotation.y = -0.12;
+      rSleeve.position.set(0.026, -0.042, 0.265);
+      rightArmSub.add(rSleeve);
+
+      const rCuff = new THREE.Mesh(new THREE.TorusGeometry(0.042, 0.011, 14, 24), matSleeveOlive);
+      rCuff.rotation.x = 0.16;
+      rCuff.rotation.y = -0.12;
+      rCuff.position.set(0.011, -0.018, 0.132);
+      rightArmSub.add(rCuff);
+
+      const rWrist = new THREE.Mesh(new THREE.CylinderGeometry(0.031, 0.037, 0.10, 20), matSkin);
+      rWrist.rotation.x = Math.PI / 2 + 0.14;
+      rWrist.rotation.y = -0.08;
+      rWrist.position.set(0.006, -0.010, 0.090);
+      rightArmSub.add(rWrist);
+
+      // Single smooth palm sphere gripping the knife handle cleanly (identical style to glovePalm on the left hand)
+      const rPalm = new THREE.Mesh(new THREE.SphereGeometry(0.032, 18, 16), matSkin);
+      rPalm.scale.set(0.84, 0.72, 1.45);
+      rPalm.position.set(0.003, -0.002, 0.012);
+      rightArmSub.add(rPalm);
+
+      // Single clean thumb cylinder resting forward along the grip (identical style to gloveThumb on the left hand)
+      const rThumb = new THREE.Mesh(new THREE.CylinderGeometry(0.0085, 0.0095, 0.046, 12), matSkin);
+      rThumb.rotation.x = Math.PI / 2 - 0.18;
+      rThumb.rotation.y = -0.15;
+      rThumb.position.set(-0.012, 0.014, -0.006);
+      rightArmSub.add(rThumb);
+
+      knifeBladePivot.add(rightArmSub);
+
+      // 3. Machined Steel Pommel Cap & Karambit Finger Ring (Exposed cleanly at the back of the grip)
       const kPommelCap = new THREE.Mesh(new THREE.CylinderGeometry(0.019, 0.017, 0.018, 18), matGunMetal);
       kPommelCap.rotation.x = Math.PI / 2;
       kPommelCap.position.set(0, 0, 0.082);
       knifeBladePivot.add(kPommelCap);
 
-      const kPommelRing = new THREE.Mesh(new THREE.TorusGeometry(0.017, 0.0048, 12, 24), matGunMetal);
+      const kPommelRing = new THREE.Mesh(new THREE.TorusGeometry(0.016, 0.0045, 12, 24), matGunMetal);
       kPommelRing.rotation.y = Math.PI / 2;
-      kPommelRing.position.set(0, -0.006, 0.104);
+      kPommelRing.position.set(0, -0.004, 0.102);
       knifeBladePivot.add(kPommelRing);
 
-      // Heavy M9 Crossguard (Quillon) + Upper Barrel Ring
+      // 4. Heavy M9 Crossguard (Quillon) + Upper Barrel Ring
       const kCrossGuard = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.078, 0.014), matGunMetal);
       kCrossGuard.position.set(0, 0.004, -0.060);
       knifeBladePivot.add(kCrossGuard);
@@ -2635,7 +2632,7 @@
       kBarrelRing.position.set(0, 0.036, -0.060);
       knifeBladePivot.add(kBarrelRing);
 
-      // Custom Extruded Clip-Point Bowie Blade Profile (with beveled razor edge)
+      // 5. Custom Extruded Clip-Point Bowie Blade Profile (with beveled razor edge)
       const bladeShape = new THREE.Shape();
       bladeShape.moveTo(0.0, -0.016);          // Base of cutting edge at guard
       bladeShape.lineTo(0.145, -0.016);        // Straight primary razor edge
@@ -2652,7 +2649,6 @@
         bevelSize: 0.0022,
         bevelThickness: 0.0020
       });
-      // Rotate extruded blade so X-length runs along -Z (forward), Y-height along +Y, and Z-thickness centered on X=0
       const kBladeMain = new THREE.Mesh(bladeExtrudeGeo, matKnifeEdge);
       kBladeMain.rotation.y = Math.PI / 2;
       kBladeMain.position.set(-0.0023, 0.001, -0.065);
@@ -2739,20 +2735,21 @@
         pistolGroup.visible = (wpnKey === 'pistol');
         knifeGroup.visible = isKnife;
         laserLine.visible = !isKnife;
+        // Hide the left support arm when holding the knife so only the right hand holding the knife is visible!
+        leftArmGroup.visible = !isKnife;
 
         if (isKnife) {
-          leftArmGroup.position.set(-0.06, -0.045, 0.15);
           ADS_POS.set(0.14, -0.145, -0.28);
         } else if (wpnKey === 'pistol') {
-          leftArmGroup.position.set(0.02, -0.02, 0.16);
+          leftArmGroup.position.set(0.008, -0.032, 0.25);
           muzzleFlashMesh.position.set(0, 0.055, -0.28);
           ADS_POS.set(0.0, -0.088, -0.22);
         } else if (wpnKey === 'shotgun') {
-          leftArmGroup.position.set(0, 0, -0.04);
+          leftArmGroup.position.set(0, 0.004, -0.04);
           muzzleFlashMesh.position.set(0, 0.048, -0.78);
           ADS_POS.set(0.0, -0.095, -0.24);
         } else if (wpnKey === 'ak47') {
-          leftArmGroup.position.set(0, 0, 0);
+          leftArmGroup.position.set(0, 0.006, 0);
           muzzleFlashMesh.position.set(0, 0.022, -0.74);
           ADS_POS.set(0.0, -0.106, -0.24);
         } else {
@@ -3598,7 +3595,9 @@
         const teamSign = (state.playerTeam === 'bravo') ? -1 : 1; // +1 = South (Alpha), -1 = North (Bravo)
 
         state.roundActive = true;
-        state.countdownTime = 5.0; // 5-second lockdown: free mouse look, movement disabled!
+        state.countdownTime = 2.0; // Quick 2-second pre-round gate: free mouse look & loadout pick!
+        pcSprintLatch = false;
+        pcAutoRunLatch = false;
         if (isTDM) {
           state.roundTime = state.tdmTimeOption === 'free' ? Infinity : (parseInt(state.tdmTimeOption, 10) || 5) * 60.0;
         } else {
@@ -3777,10 +3776,10 @@
           if (x >= s.minX && x <= s.maxX && z >= s.minZ && z <= s.maxZ) {
             const surfY = s.getY(x, z);
             if (s.mapType === 'stairs') {
-              if (surfY <= currentFootY + 1.15 && surfY > bestY) {
+              if (surfY <= currentFootY + 1.85 && surfY > bestY) {
                 bestY = surfY;
               }
-            } else if (surfY <= currentFootY + 0.65 && surfY > bestY) {
+            } else if (surfY <= currentFootY + 0.95 && surfY > bestY) {
               bestY = surfY;
             }
           }
@@ -3789,7 +3788,7 @@
       }
 
       function findMantleCandidate(p) {
-        if (p.mantling || p.dying || state.countdownTime > 0) return null;
+        if (p.mantling || p.dying) return null;
         const lookX = -Math.sin(p.yaw);
         const lookZ = -Math.cos(p.yaw);
 
@@ -3870,8 +3869,6 @@
       function triggerMantleOrJump() {
         const p = state.player;
         if (!state.roundActive || p.dying || p.mantling) return;
-        // Movement/jumping/mantling disabled until 5s countdown finishes!
-        if (state.countdownTime > 0) return;
 
         // Slide-cancel if currently sliding!
         if (p.sliding) {
@@ -3966,8 +3963,15 @@
         return { x: rawX * scale, y: rawY * scale, mag: norm };
       }
 
+      let lastGamepadProbeTime = 0;
       function pollGamepadInput(dt) {
         if (!navigator.getGamepads) return;
+        if (controlScheme === 'pc' || controlScheme === 'mobile') return;
+        if (!gamepadState.connected && controlScheme !== 'controller') {
+          const nowT = performance.now();
+          if (nowT - lastGamepadProbeTime < 1000) return;
+          lastGamepadProbeTime = nowT;
+        }
         const pads = navigator.getGamepads();
         let gp = null;
         for (let i = 0; i < pads.length; i++) {
@@ -4161,7 +4165,7 @@
             }
 
             // A (button 1): Crouch / Slide
-            if (btnJustPressed(1) && state.countdownTime <= 0) {
+            if (btnJustPressed(1)) {
               if ((p.sprinting || gamepadState.moveY > 0.78) && p.grounded && !p.sliding) {
                 p.sliding = true;
                 p.slideTimer = 0.52;
@@ -4204,91 +4208,334 @@
         }
       }
 
-      // --- 13. Tactical FPS RESPONSIVE CONTROLS & RAW MOUSE INPUT ---
+      // --- 13. CALL OF DUTY PC CONTROLS (MOUSE & KEYBOARD) ---
+      // Standard Call of Duty PC Keybinds:
+      //   W / A / S / D         : Move Forward / Strafe Left / Move Back / Strafe Right (stops immediately on release)
+      //   Left Shift (Hold/Tap) : Sprint / Tactical Sprint while moving forward (W)
+      //   Space                 : Jump / Mantle Ledge / Slide-Cancel
+      //   C or Left Ctrl        : Crouch (tap while walking) / Tactical Slide (press while sprinting)
+      //   Mouse Move            : 360° 1:1 Free Look / Aim
+      //   Left Mouse Button     : Fire Weapon (or Melee Stab with Combat Knife)
+      //   Right Mouse Button    : Aim Down Sights (Hold ADS)
+      //   R                     : Reload Weapon
+      //   V or F or Middle Click: Quick Melee / Combat Knife Strike
+      //   Q or E                : Throw Tactical Equipment (Stun Grenade)
+      //   G                     : Throw Lethal Equipment (Frag Grenade)
+      //   1 / 2 / 3 / 4 / Wheel : Select Loadout Weapon (during pre-round countdown)
+      //   Escape                : Leave Match / Open Game Setup & Lobby
       const keys = {};
       let isPointerLocked = false;
+      let pcAimLocked = true;
+      let pcSprintLatch = false;
+      let pcAutoRunLatch = false;
+      let lastWKeyDownTime = 0;
       let isMouseDragging = false;
-      let lastMouseX = 0;
-      let lastMouseY = 0;
+      let mouseAdsHeld = false;
+      let lastMouseX = null;
+      let lastMouseY = null;
       let mouseFireHeld = false;
+      let mouseInsideViewport = false;
+      let mouseNormX = 0;
+      let mouseNormY = 0;
+
+      const onlineModalEl = document.getElementById('online-modal');
+      const roundModalEl = document.getElementById('round-modal');
+      const startupScreenEl = document.getElementById('startup-screen');
+
+      function isGameplayModalOpen() {
+        return (
+          !onlineModalEl.classList.contains('hidden') ||
+          !roundModalEl.classList.contains('hidden') ||
+          !startupScreenEl.classList.contains('hidden')
+        );
+      }
+
+      function focusGameplayCanvas() {
+        const activeEl = document.activeElement;
+        if (activeEl && activeEl !== canvasEl && activeEl !== document.body) {
+          try { activeEl.blur(); } catch (e) {}
+        }
+        try { canvasEl.focus({ preventScroll: true }); } catch (e) {}
+      }
 
       function requestRawPointerLock() {
-        if (isPointerLocked || !canvasEl.requestPointerLock) return;
+        pcAimLocked = true;
+        focusGameplayCanvas();
+        if (document.pointerLockElement === canvasEl || !canvasEl.requestPointerLock) {
+          isPointerLocked = Boolean(document.pointerLockElement);
+          return;
+        }
         try {
-          const p = canvasEl.requestPointerLock({ unadjustedMovement: true });
-          if (p && typeof p.catch === 'function') {
-            p.catch(() => {
-              try { canvasEl.requestPointerLock(); } catch (e) {}
+          const lockPromise = canvasEl.requestPointerLock({ unadjustedMovement: true });
+          if (lockPromise && typeof lockPromise.catch === 'function') {
+            lockPromise.catch(() => {
+              try {
+                const p2 = canvasEl.requestPointerLock();
+                if (p2 && typeof p2.catch === 'function') p2.catch(() => {});
+              } catch (e2) {}
             });
           }
         } catch (err) {
-          try { canvasEl.requestPointerLock(); } catch (e) {}
+          try {
+            const p = canvasEl.requestPointerLock();
+            if (p && typeof p.catch === 'function') p.catch(() => {});
+          } catch (e2) {}
+        }
+      }
+
+      function normalizeKeyCode(e) {
+        if (e.code) return e.code;
+        const k = (e.key || '').toLowerCase();
+        if (k === 'w') return 'KeyW';
+        if (k === 'a') return 'KeyA';
+        if (k === 's') return 'KeyS';
+        if (k === 'd') return 'KeyD';
+        if (k === 'c') return 'KeyC';
+        if (k === 'r') return 'KeyR';
+        if (k === 'v') return 'KeyV';
+        if (k === 'q') return 'KeyQ';
+        if (k === 'e') return 'KeyE';
+        if (k === 'g') return 'KeyG';
+        if (k === 'f') return 'KeyF';
+        if (k === '1') return 'Digit1';
+        if (k === '2') return 'Digit2';
+        if (k === '3') return 'Digit3';
+        if (k === '4') return 'Digit4';
+        if (k === ' ') return 'Space';
+        if (k === 'shift') return 'ShiftLeft';
+        if (k === 'control') return 'ControlLeft';
+        return '';
+      }
+
+      function performCoDQuickMelee() {
+        const p = state.player;
+        if (!state.roundActive || p.dying || p.droppingGun || p.fireCooldown > 0) return;
+        if (state.countdownTime > 0) return;
+        if (!p.hasKnife) {
+          p.quickMeleeActive = true;
+          updateFirstPersonWeaponAppearance('knife');
+        }
+        performPlayerKnifeStab();
+      }
+
+      function triggerCoDCrouchOrSlide() {
+        const p = state.player;
+        if (!state.roundActive || p.dying || p.mantling) return;
+        const movingFwd = Boolean(keys['KeyW'] || keys['ArrowUp']);
+        const sprintingNow = Boolean(p.sprinting || ((keys['ShiftLeft'] || keys['ShiftRight'] || pcSprintLatch) && movingFwd));
+        if (sprintingNow && p.grounded && !p.sliding) {
+          p.sliding = true;
+          p.slideTimer = 0.52;
+          p.crouching = true;
+          p.sprinting = false;
+          pcSprintLatch = false;
+        } else {
+          p.sliding = false;
+          p.crouching = !p.crouching;
+          if (p.crouching) {
+            p.sprinting = false;
+            pcSprintLatch = false;
+          }
         }
       }
 
       window.addEventListener('keydown', (e) => {
-        if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
-        keys[e.code] = true;
-        if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+        const code = normalizeKeyCode(e);
+        const activeEl = document.activeElement;
+
+        // Only allow <input> elements to consume typing when Setup Modal is open, or digits inside #hud-tdm-kills
+        if (activeEl && activeEl.tagName === 'INPUT') {
+          if (!onlineModalEl.classList.contains('hidden')) return;
+          if (activeEl.id === 'hud-tdm-kills' && /^(Digit|Numpad|Backspace|Delete)/.test(code)) return;
+          try { activeEl.blur(); } catch (err) {}
+        }
+
+        const inGameplay = (appScreenState === 'playing' && !isGameplayModalOpen());
+
+        // Prevent browser scrolling, button activation, or select-dropdown hijacking on gameplay keys
+        if (inGameplay && [
+          'KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ShiftLeft', 'ShiftRight',
+          'ControlLeft', 'ControlRight', 'KeyC', 'KeyR', 'KeyV', 'KeyF',
+          'KeyQ', 'KeyE', 'KeyG', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'
+        ].includes(code)) {
           e.preventDefault();
         }
-        if (!state.roundActive && e.code === 'Space') {
+
+        // Immediately blur any HUD <select> or <button> so native browser controls never intercept WASD/Space
+        if (inGameplay && activeEl && activeEl !== canvasEl && activeEl !== document.body) {
+          try { activeEl.blur(); } catch (err) {}
+        }
+
+        keys[code] = true;
+        if (e.shiftKey) {
+          keys['ShiftLeft'] = true;
+        }
+
+        // Ensure mobile touch HUD never blocks PC gameplay
+        if (inGameplay && (controlScheme === 'auto' || controlScheme === 'pc')) {
+          const hudEl = document.getElementById('cod-mobile-hud');
+          if (hudEl && !hudEl.classList.contains('hidden')) {
+            hudEl.classList.add('hidden');
+          }
+        }
+
+        // Ignore OS key-repeat events for one-shot actions
+        if (e.repeat) return;
+
+        if (!state.roundActive && code === 'Space' && appScreenState === 'playing') {
           resetPositionsForRound();
           sfx.playBuzzer(260);
           return;
         }
-        if (e.code === 'Space') {
+
+        if (!inGameplay) return;
+
+        // Pre-round weapon selection via 1 / 2 / 3 / 4
+        if (state.countdownTime > 0) {
+          if (code === 'Digit1') { applySharedLoadout('mp5', true); showCombatToast('LOADOUT: MP5 SMG'); return; }
+          if (code === 'Digit2') { applySharedLoadout('ak47', true); showCombatToast('LOADOUT: AK-47 RIFLE'); return; }
+          if (code === 'Digit3') { applySharedLoadout('shotgun', true); showCombatToast('LOADOUT: M680 SHOTGUN'); return; }
+          if (code === 'Digit4') { applySharedLoadout('pistol', true); showCombatToast('LOADOUT: M19 PISTOL'); return; }
+        }
+
+        // Call of Duty Sprint: Left Shift while holding W, or double-tap W
+        if (code === 'KeyW') {
+          const nowT = performance.now();
+          if (nowT - lastWKeyDownTime < 280 || keys['ShiftLeft'] || keys['ShiftRight'] || e.shiftKey) {
+            pcSprintLatch = true;
+            if (state.player.crouching && !state.player.sliding) {
+              state.player.crouching = false;
+            }
+          }
+          lastWKeyDownTime = nowT;
+        }
+
+        if (code === 'ShiftLeft' || code === 'ShiftRight') {
+          pcSprintLatch = true;
+          if (state.player.crouching && !state.player.sliding) {
+            state.player.crouching = false;
+          }
+        }
+
+        if (code === 'KeyS') {
+          pcSprintLatch = false;
+        }
+
+        // Space: Jump / Mantle / Slide-Cancel
+        if (code === 'Space') {
           triggerMantleOrJump();
         }
-        if (e.code === 'KeyR') triggerReload();
-        if (e.code === 'KeyV') {
+
+        // C or Left Ctrl: Crouch / Tactical Slide
+        if (code === 'KeyC' || code === 'ControlLeft' || code === 'ControlRight') {
+          triggerCoDCrouchOrSlide();
+        }
+
+        // R: Reload Weapon
+        if (code === 'KeyR') {
+          triggerReload();
+        }
+
+        // V or F: Quick Melee / Combat Knife Strike (or toggle spectator POV in 2v2 when dead)
+        if (code === 'KeyV' || code === 'KeyF') {
           if (state.player.spectating) {
             state.player.spectateThirdPerson = !state.player.spectateThirdPerson;
             showCombatToast(state.player.spectateThirdPerson ? 'SPECTATOR: 3RD-PERSON FOLLOW CAM' : 'SPECTATOR: 1ST-PERSON TEAMMATE POV');
           } else {
-            state.player.ads = !state.player.ads;
+            const cand = (code === 'KeyF') ? findMantleCandidate(state.player) : null;
+            if (cand) {
+              startPlayerMantle(state.player, cand);
+            } else {
+              performCoDQuickMelee();
+            }
           }
         }
-        if (e.code === 'ShiftLeft' && state.player.crouching && !state.player.sliding) {
-          state.player.crouching = false;
+
+        // Q or E: Tactical Equipment (Stun Grenade)
+        if (code === 'KeyQ' || code === 'KeyE') {
+          throwGrenade('stun');
         }
-        if (e.code === 'KeyG' || e.code === 'Digit4') throwGrenade('frag');
-        if (e.code === 'KeyE' || e.code === 'Digit3') throwGrenade('stun');
-        if ((e.code === 'KeyC' || e.code === 'ControlLeft') && state.countdownTime <= 0) {
-          if (state.player.sprinting && state.player.grounded && !state.player.sliding) {
-            state.player.sliding = true;
-            state.player.slideTimer = 0.52;
-            state.player.crouching = true;
-          } else {
-            state.player.crouching = !state.player.crouching;
-          }
+
+        // G: Lethal Equipment (Frag Grenade)
+        if (code === 'KeyG') {
+          throwGrenade('frag');
         }
       });
 
       window.addEventListener('keyup', (e) => {
-        keys[e.code] = false;
+        const code = normalizeKeyCode(e);
+        keys[code] = false;
+        if (!e.shiftKey && (code === 'ShiftLeft' || code === 'ShiftRight')) {
+          keys['ShiftLeft'] = false;
+          keys['ShiftRight'] = false;
+        }
+        // In Call of Duty, releasing W immediately stops forward movement and resets sprint latch
+        if (code === 'KeyW' || code === 'ArrowUp') {
+          pcSprintLatch = false;
+        }
       });
 
-      canvasEl.addEventListener('mousedown', (e) => {
+      window.addEventListener('blur', () => {
+        Object.keys(keys).forEach((k) => { keys[k] = false; });
+        pcSprintLatch = false;
+        pcAutoRunLatch = false;
+        mouseFireHeld = false;
+        mouseAdsHeld = false;
+        if (state.player) state.player.ads = false;
+        isMouseDragging = false;
+        mouseInsideViewport = false;
+      });
+
+      function handleGameplayMouseDown(e) {
+        if (e.target && e.target.closest && e.target.closest('button, select, input, label, #online-modal, #round-modal, #startup-screen, #loading-screen')) {
+          return;
+        }
         sfx.init();
         if (!state.roundActive || state.player.dying) return;
 
-        // Always lock pointer immediately on click for CoD 1:1 mouse look!
+        if (controlScheme === 'auto' || controlScheme === 'pc') {
+          const hudEl = document.getElementById('cod-mobile-hud');
+          if (hudEl && !hudEl.classList.contains('hidden')) {
+            hudEl.classList.add('hidden');
+          }
+        }
+
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+
+        // Lock pointer immediately on click for raw 1:1 Call of Duty mouse aim
         requestRawPointerLock();
 
+        // Right Mouse Button (button === 2): Hold to Aim Down Sights (ADS)
         if (e.button === 2) {
+          mouseAdsHeld = true;
           state.player.ads = true;
-          if (state.player.sliding) state.player.sliding = false; // ADS slide-cancel
+          state.player.sprinting = false;
+          if (state.player.sliding) state.player.sliding = false;
           return;
         }
+
+        // Middle Mouse Button (button === 1): Quick Melee
+        if (e.button === 1) {
+          e.preventDefault();
+          performCoDQuickMelee();
+          return;
+        }
+
+        // Left Mouse Button (button === 0): Fire Weapon
         if (e.button === 0) {
           mouseFireHeld = true;
           isMouseDragging = true;
-          lastMouseX = e.clientX;
-          lastMouseY = e.clientY;
           if (state.countdownTime <= 0) {
             attemptPlayerFire();
           }
+        }
+      }
+
+      document.getElementById('game-container').addEventListener('mousedown', handleGameplayMouseDown);
+      canvasEl.addEventListener('click', () => {
+        if (appScreenState === 'playing' && !isGameplayModalOpen() && !isUsingMobileControls()) {
+          requestRawPointerLock();
         }
       });
 
@@ -4298,6 +4545,7 @@
           isMouseDragging = false;
         }
         if (e.button === 2) {
+          mouseAdsHeld = false;
           state.player.ads = false;
         }
       });
@@ -4305,38 +4553,95 @@
       window.addEventListener('contextmenu', (e) => e.preventDefault());
 
       document.addEventListener('pointerlockchange', () => {
-        isPointerLocked = (document.pointerLockElement === canvasEl);
+        isPointerLocked = Boolean(document.pointerLockElement);
+        lastMouseX = null;
+        lastMouseY = null;
       });
 
-      window.addEventListener('mousemove', (e) => {
-        if (!state.roundActive) return;
+      function applyPCMouseLookDelta(dx, dy, lockedNow) {
+        if (dx === 0 && dy === 0) return;
+        dx = Math.max(-700, Math.min(700, dx));
+        dy = Math.max(-700, Math.min(700, dy));
+
         if (state.player.dying) {
-          if (state.player.spectating && isPointerLocked) {
+          if (state.player.spectating) {
             const sens = 0.0021 * state.mouseSensMult;
-            state.player.spectateYawOffset -= e.movementX * sens;
-            state.player.spectatePitchOffset = Math.max(-0.65, Math.min(0.85, state.player.spectatePitchOffset + e.movementY * sens));
+            state.player.spectateYawOffset -= dx * sens;
+            state.player.spectatePitchOffset = Math.max(-0.65, Math.min(0.85, state.player.spectatePitchOffset + dy * sens));
           }
           return;
         }
         const baseSens = (state.player.ads ? 0.00135 : 0.00215) * state.mouseSensMult;
-        if (isPointerLocked) {
-          state.player.yaw -= e.movementX * baseSens;
-          state.player.pitch = Math.max(-1.42, Math.min(1.42, state.player.pitch - e.movementY * baseSens));
-        } else if (isMouseDragging) {
-          const dx = e.clientX - lastMouseX;
-          const dy = e.clientY - lastMouseY;
+        const mult = lockedNow ? 1.0 : 1.32;
+        state.player.yaw -= dx * baseSens * mult;
+        state.player.pitch = Math.max(-1.42, Math.min(1.42, state.player.pitch - dy * baseSens * mult));
+      }
+
+      function handleRawMouseMove(e) {
+        if (!state.roundActive || appScreenState !== 'playing') return;
+        if (isGameplayModalOpen()) return;
+
+        // Process mousemove for mouse/trackpad; ignore duplicate pointermove events for mouse
+        if (e.type === 'pointermove') {
+          if (!e.pointerType || e.pointerType === 'mouse') return;
+          if (e.pointerType === 'touch' && isUsingMobileControls()) return;
+        }
+
+        const lockedNow = Boolean(document.pointerLockElement);
+        isPointerLocked = lockedNow;
+
+        const movX = typeof e.movementX === 'number' ? e.movementX : 0;
+        const movY = typeof e.movementY === 'number' ? e.movementY : 0;
+        const hasClient = (typeof e.clientX === 'number' && typeof e.clientY === 'number');
+        const clientDX = (hasClient && lastMouseX !== null) ? (e.clientX - lastMouseX) : 0;
+        const clientDY = (hasClient && lastMouseY !== null) ? (e.clientY - lastMouseY) : 0;
+
+        if (hasClient) {
           lastMouseX = e.clientX;
           lastMouseY = e.clientY;
-          state.player.yaw -= dx * baseSens * 1.25;
-          state.player.pitch = Math.max(-1.42, Math.min(1.42, state.player.pitch - dy * baseSens * 1.25));
+          const vp = getGameViewportSize();
+          if (vp.width > 0 && vp.height > 0) {
+            mouseInsideViewport = (e.clientX >= 0 && e.clientX <= vp.width && e.clientY >= 0 && e.clientY <= vp.height);
+            mouseNormX = Math.max(-1, Math.min(1, (e.clientX / vp.width) * 2 - 1));
+            mouseNormY = Math.max(-1, Math.min(1, (e.clientY / vp.height) * 2 - 1));
+          }
         }
-      });
+
+        let dx = 0;
+        let dy = 0;
+        if (lockedNow) {
+          dx = movX !== 0 ? movX : clientDX;
+          dy = movY !== 0 ? movY : clientDY;
+        } else {
+          dx = Math.abs(movX) >= Math.abs(clientDX) ? movX : clientDX;
+          dy = Math.abs(movY) >= Math.abs(clientDY) ? movY : clientDY;
+        }
+
+        applyPCMouseLookDelta(dx, dy, lockedNow);
+      }
+
+      window.addEventListener('pointermove', handleRawMouseMove, { passive: true });
+      window.addEventListener('mousemove', handleRawMouseMove, { passive: true });
+
+      // Mouse Wheel: Cycle shared loadout weapon during pre-round countdown (Call of Duty weapon scroll)
+      window.addEventListener('wheel', (e) => {
+        if (!state.roundActive || appScreenState !== 'playing' || isGameplayModalOpen()) return;
+        if (state.countdownTime > 0 && Math.abs(e.deltaY) > 0) {
+          const order = ['mp5', 'ak47', 'shotgun', 'pistol'];
+          const curIdx = Math.max(0, order.indexOf(state.weaponKey));
+          const nextIdx = (curIdx + (e.deltaY > 0 ? 1 : order.length - 1)) % order.length;
+          applySharedLoadout(order[nextIdx], true);
+          showCombatToast(`SHARED LOADOUT: ${WEAPONS[state.weaponKey].name}`);
+        }
+      }, { passive: true });
 
       document.getElementById('mode-select').addEventListener('change', (e) => {
         state.mode = e.target.value;
         document.getElementById('select-lobby-mode').value = state.mode;
         syncTdmUIControls();
         resetPositionsForRound();
+        try { e.target.blur(); } catch (err) {}
+        focusGameplayCanvas();
         showCombatToast(`SWITCHED TO ${state.mode.toUpperCase()} MODE`);
       });
 
@@ -4408,6 +4713,8 @@
       });
 
       document.getElementById('loadout-select').addEventListener('change', (e) => {
+        try { e.target.blur(); } catch (err) {}
+        focusGameplayCanvas();
         if (state.countdownTime <= 0 && state.roundActive) {
           e.target.value = state.weaponKey;
           showCombatToast('LOADOUT LOCKED AFTER COUNTDOWN!');
@@ -4419,6 +4726,8 @@
 
       document.getElementById('difficulty-select').addEventListener('change', (e) => {
         state.difficulty = e.target.value;
+        try { e.target.blur(); } catch (err) {}
+        focusGameplayCanvas();
         showCombatToast(`OPPONENT SKILL: ${state.difficulty.toUpperCase()}`);
       });
 
@@ -4426,18 +4735,22 @@
         sfx.init();
         sfx.setEnabled(!sfx.enabled);
         e.currentTarget.textContent = sfx.enabled ? 'SFX: ON' : 'SFX: OFF';
+        try { e.currentTarget.blur(); } catch (err) {}
+        focusGameplayCanvas();
       });
 
       document.getElementById('btn-new-round').addEventListener('click', () => {
         sfx.init();
         sfx.playBuzzer(260);
         resetPositionsForRound();
+        if (!isUsingMobileControls()) requestRawPointerLock();
       });
 
       document.getElementById('btn-modal-rematch').addEventListener('click', () => {
         sfx.init();
         sfx.playBuzzer(260);
         resetPositionsForRound();
+        if (!isUsingMobileControls()) requestRawPointerLock();
       });
 
       document.getElementById('input-mouse-sens').addEventListener('input', (e) => {
@@ -4456,7 +4769,16 @@
       document.getElementById('btn-online-lobby').addEventListener('click', openOnlineModal);
       document.getElementById('btn-edit-username').addEventListener('click', openOnlineModal);
       document.getElementById('btn-close-online').addEventListener('click', () => {
+        controlScheme = document.getElementById('select-control-scheme').value;
+        applyPerformancePreset(document.getElementById('select-perf-mode').value);
         document.getElementById('online-modal').classList.add('hidden');
+        document.getElementById('startup-screen').classList.add('hidden');
+        if (appScreenState !== 'playing' || !state.roundActive) {
+          appScreenState = 'playing';
+          resetPositionsForRound();
+        }
+        updateControlSchemeVisibility();
+        if (!isUsingMobileControls()) requestRawPointerLock();
       });
 
 
@@ -5046,7 +5368,7 @@
         if (state.countdownTime > 0) return;
 
         // If player has already dropped their empty gun and drawn the Combat Knife, perform a 1-stab-kill melee attack!
-        if (p.hasKnife) {
+        if (p.hasKnife || p.quickMeleeActive) {
           performPlayerKnifeStab();
           return;
         }
@@ -5063,7 +5385,6 @@
 
         p.mag--;
         p.fireCooldown = wpn.fireRate;
-        p.sprinting = false;
         p.sliding = false;
         state.shotsFired++;
 
@@ -5256,14 +5577,27 @@
         for (let s = 0; s < steps; s++) {
           entity.x += stepX;
           if (entity.grounded !== false) {
-            entity.footY = getFloorElevationAt(entity.x, entity.z, entity.footY || 0);
+            const preFloorY = getFloorElevationAt(entity.x, entity.z, entity.footY || 0);
+            if (preFloorY >= (entity.footY || 0) - 0.65) {
+              entity.footY = preFloorY;
+            }
           }
           resolveWorldCollisions(entity, radius);
           entity.z += stepZ;
           if (entity.grounded !== false) {
-            entity.footY = getFloorElevationAt(entity.x, entity.z, entity.footY || 0);
+            const midFloorY = getFloorElevationAt(entity.x, entity.z, entity.footY || 0);
+            if (midFloorY >= (entity.footY || 0) - 0.65) {
+              entity.footY = midFloorY;
+            }
           }
           resolveWorldCollisions(entity, radius);
+          if (entity.grounded !== false) {
+            const nextFloorY = getFloorElevationAt(entity.x, entity.z, entity.footY || 0);
+            // Smoothly step up/down stairs & ramps; if stepping off a high ledge (> 0.65m drop), let gravity handle falling in animate()
+            if (nextFloorY >= (entity.footY || 0) - 0.65) {
+              entity.footY = nextFloorY;
+            }
+          }
         }
       }
 
@@ -6077,22 +6411,26 @@
             }
           }
 
-          // Keyboard look fallback (always enabled)
-          if (keys['ArrowLeft']) p.yaw += 2.1 * dt;
-          if (keys['ArrowRight']) p.yaw -= 2.1 * dt;
-          if (keys['ArrowUp']) p.pitch = Math.min(1.4, p.pitch + 1.5 * dt);
-          if (keys['ArrowDown']) p.pitch = Math.max(-1.4, p.pitch - 1.5 * dt);
-
-          const targetLean = (state.countdownTime <= 0 && (keys['KeyQ'] || gamepadState.leanHeld)) ? 0.14 : 0;
+          const targetLean = (state.countdownTime <= 0 && gamepadState.leanHeld) ? 0.14 : 0;
           p.lean += (targetLean - p.lean) * Math.min(1, dt * 14);
 
-          // Movement is strictly disabled while state.countdownTime > 0!
-          // Supports both Keyboard WASD and smooth 360° Switch Pro Controller Left Stick!
-          const canMoveNow = (state.countdownTime <= 0);
-          const kbForward = (keys['KeyW'] ? 1 : 0) - (keys['KeyS'] ? 1 : 0);
-          const kbStrafe = (keys['KeyD'] ? 1 : 0) - (keys['KeyA'] ? 1 : 0);
-          let moveForward = canMoveNow ? (Math.abs(gamepadState.moveY) > Math.abs(kbForward) ? gamepadState.moveY : kbForward) : 0;
-          let moveStrafe = canMoveNow ? (Math.abs(gamepadState.moveX) > Math.abs(kbStrafe) ? gamepadState.moveX : kbStrafe) : 0;
+          // Call of Duty PC Movement: WASD (with Arrow keys backup), immediate stop on key release
+          const canMoveNow = true;
+          const shiftHeld = Boolean(keys['ShiftLeft'] || keys['ShiftRight']);
+          const kbForward = ((keys['KeyW'] || keys['ArrowUp']) ? 1 : 0) - ((keys['KeyS'] || keys['ArrowDown']) ? 1 : 0);
+          const kbStrafe = ((keys['KeyD'] || keys['ArrowRight']) ? 1 : 0) - ((keys['KeyA'] || keys['ArrowLeft']) ? 1 : 0);
+          let rawForward = kbForward;
+          let rawStrafe = kbStrafe;
+          if (Math.hypot(touchJoyVec.x, touchJoyVec.y) > Math.hypot(rawStrafe, rawForward)) {
+            rawForward = touchJoyVec.y;
+            rawStrafe = touchJoyVec.x;
+          }
+          if (Math.hypot(gamepadState.moveX, gamepadState.moveY) > Math.hypot(rawStrafe, rawForward)) {
+            rawForward = gamepadState.moveY;
+            rawStrafe = gamepadState.moveX;
+          }
+          let moveForward = canMoveNow ? rawForward : 0;
+          let moveStrafe = canMoveNow ? rawStrafe : 0;
           const isMoving = (Math.hypot(moveForward, moveStrafe) > 0.04);
 
           const mantleCand = findMantleCandidate(p);
@@ -6130,11 +6468,28 @@
               resolveWorldCollisions(p, 0.36);
             }
           } else {
-            const wantSprint = keys['ShiftLeft'] || gamepadState.sprintLock || (gamepadState.moveY > 0.82) || touchJoyVec.sprinting;
-            if (canMoveNow && wantSprint && moveForward > 0.25 && !p.sliding && p.crouching) {
+            if (rawForward <= 0.15) {
+              pcSprintLatch = false;
+            }
+            const activelyFiringGun = Boolean(mouseFireHeld && state.countdownTime <= 0 && !p.hasKnife);
+            const wantSprint =
+              shiftHeld ||
+              pcSprintLatch ||
+              gamepadState.sprintLock ||
+              (gamepadState.moveY > 0.82) ||
+              touchJoyVec.sprinting;
+            if (canMoveNow && wantSprint && moveForward > 0.22 && !p.sliding && p.crouching) {
               p.crouching = false;
             }
-            p.sprinting = Boolean(canMoveNow && wantSprint && moveForward > 0.25 && !p.ads && !p.crouching && !p.reloading);
+            p.sprinting = Boolean(
+              canMoveNow &&
+              wantSprint &&
+              moveForward > 0.22 &&
+              !p.ads &&
+              !p.crouching &&
+              !activelyFiringGun &&
+              !p.reloading
+            );
 
             if (p.sliding) {
               p.slideTimer -= dt;
@@ -6150,7 +6505,7 @@
               maxSpeed *= 0.4;
             }
 
-            // Snappy Tactical FPS velocity acceleration & instant counter-strafing
+            // Snappy Call of Duty velocity acceleration & instant counter-strafing
             let wishVX = 0;
             let wishVZ = 0;
             if (isMoving) {
@@ -6164,7 +6519,7 @@
               wishVZ = (-cosY * moveForward - sinY * moveStrafe) * maxSpeed;
             }
 
-            const accelRate = isMoving ? 24.0 : 18.0;
+            const accelRate = isMoving ? 26.0 : 22.0;
             p.vx += (wishVX - p.vx) * Math.min(1, dt * accelRate);
             p.vz += (wishVZ - p.vz) * Math.min(1, dt * accelRate);
 
@@ -6187,8 +6542,8 @@
             if (!p.grounded) {
               p.footY += p.vy * dt;
               p.vy -= 15.0 * dt;
-              // Headroom ceiling check under upper floor catwalk decks
-              if (p.footY < UPPER_Y - 0.8 && Math.abs(p.x) > 6.4 && Math.abs(p.z) < 5.6 && p.footY + 1.75 > UPPER_Y - 0.25) {
+              // Headroom ceiling check ONLY when jumping on the 1st floor (footY < 1.0) directly under the 2F catwalk slab
+              if (p.footY < 1.0 && groundY < 0.2 && Math.abs(p.x) > 6.6 && Math.abs(p.z) < 5.2 && p.footY + 1.75 > UPPER_Y - 0.25) {
                 p.footY = UPPER_Y - 2.0;
                 if (p.vy > 0) p.vy = -0.5;
               }
@@ -6198,11 +6553,11 @@
                 p.grounded = true;
               }
             } else {
-              if (groundY < p.footY - 0.55) {
+              if (groundY < p.footY - 0.65) {
                 p.grounded = false;
                 p.vy = 0;
               } else {
-                p.footY += (groundY - p.footY) * Math.min(1, dt * 20);
+                p.footY = groundY;
               }
             }
           }
@@ -6215,8 +6570,13 @@
           p.recoilYawAccum *= Math.pow(0.06, dt);
 
           const targetFov = p.ads ? wpn.adsFov : (p.sprinting ? 80 : 72);
-          camera.fov += (targetFov - camera.fov) * Math.min(1, dt * 18);
-          camera.updateProjectionMatrix();
+          if (Math.abs(targetFov - camera.fov) > 0.02) {
+            camera.fov += (targetFov - camera.fov) * Math.min(1, dt * 18);
+            camera.updateProjectionMatrix();
+          } else if (camera.fov !== targetFov) {
+            camera.fov = targetFov;
+            camera.updateProjectionMatrix();
+          }
 
           const headBobY = isMoving ? Math.sin(p.bobPhase * 2) * (p.ads ? 0.006 : 0.024) : Math.sin(p.bobPhase) * 0.003;
           const headBobX = isMoving ? Math.cos(p.bobPhase) * (p.ads ? 0.005 : 0.016) : 0;
@@ -6245,6 +6605,10 @@
           }
           if (p.knifeSlashTimer > 0) {
             p.knifeSlashTimer = Math.max(0, p.knifeSlashTimer - dt);
+            if (p.knifeSlashTimer <= 0 && p.quickMeleeActive && !p.hasKnife) {
+              p.quickMeleeActive = false;
+              updateFirstPersonWeaponAppearance(state.weaponKey);
+            }
           }
 
           const targetAds = (p.ads && !p.hasKnife && !p.droppingGun) ? 1 : 0;
@@ -6273,23 +6637,19 @@
           const stabRollZ = slashCurve * (isSlashStrike ? -0.58 : 0.28);
 
           if (p.hasKnife) {
-            // Animate the M9 Bayonet blade pivot & slash trail
-            const drawSpin = (p.droppingGun && p.dropGunTimer > 0)
-              ? (p.dropGunTimer / 0.25) * Math.PI * 2.0
+            // Animate the M9 Bayonet & coaxial hand pivot (natural forward-upward +0.34 pitch, smooth unsheathe lift & CQC strike)
+            const drawTilt = (p.droppingGun && p.dropGunTimer > 0)
+              ? -(p.dropGunTimer / 0.25) * 0.55
               : 0;
-            const idleBreathe = Math.sin(now * 0.0035) * 0.035;
+            const idleBreathe = Math.sin(now * 0.0032) * 0.024;
             knifeBladePivot.rotation.set(
-              -0.42 + drawSpin + slashCurve * 0.48 + idleBreathe,
-              0.08 + slashCurve * (isSlashStrike ? 0.42 : 0.12),
-              -0.06 + stabRollZ * 0.6
+              0.34 + drawTilt - slashCurve * (isSlashStrike ? 0.22 : 0.36) + idleBreathe,
+              0.20 + slashCurve * (isSlashStrike ? 0.46 : 0.14),
+              -0.08 + stabRollZ * 0.45
             );
             slashTrailMat.opacity = slashCurve > 0.35 ? (slashCurve - 0.35) * 0.65 : 0;
-            // Left CQC guard hand counter-motion during knife strike
-            leftArmGroup.position.set(
-              -0.06 - slashCurve * 0.05,
-              -0.045 - slashCurve * 0.04 + Math.sin(p.bobPhase) * 0.006,
-              0.15 + slashCurve * 0.08
-            );
+            // Ensure left support hand stays hidden while holding the knife
+            leftArmGroup.visible = false;
           } else {
             slashTrailMat.opacity = 0;
           }
@@ -6338,12 +6698,21 @@
             muzzleFlashMat.opacity = Math.max(0, muzzleFlashMat.opacity - dt * 20);
           }
 
-          const reticleGap = p.ads ? 4 : (8 + (isMoving ? 5 : 0) + (p.sprinting ? 7 : 0) + p.recoilPitchAccum * 160);
-          document.getElementById('reticle-container').style.opacity = String(1 - p.adsBlend * 0.90);
-          document.getElementById('ch-top').style.transform = `translateY(${-reticleGap}px)`;
-          document.getElementById('ch-bottom').style.transform = `translateY(${reticleGap}px)`;
-          document.getElementById('ch-left').style.transform = `translateX(${-reticleGap}px)`;
-          document.getElementById('ch-right').style.transform = `translateX(${reticleGap}px)`;
+          const rawGap = p.ads ? 4 : (8 + (isMoving ? 5 : 0) + (p.sprinting ? 7 : 0) + p.recoilPitchAccum * 160);
+          p._smoothGap = (p._smoothGap === undefined) ? rawGap : (p._smoothGap + (rawGap - p._smoothGap) * Math.min(1, dt * 22));
+          const reticleGap = Math.round(p._smoothGap * 2) * 0.5;
+          const retOpacity = Math.round((1 - p.adsBlend * 0.90) * 100) / 100;
+          if (hudCache._retOp !== retOpacity) {
+            hudCache._retOp = retOpacity;
+            document.getElementById('reticle-container').style.opacity = String(retOpacity);
+          }
+          if (hudCache._retGap !== reticleGap) {
+            hudCache._retGap = reticleGap;
+            document.getElementById('ch-top').style.transform = `translateY(${-reticleGap}px)`;
+            document.getElementById('ch-bottom').style.transform = `translateY(${reticleGap}px)`;
+            document.getElementById('ch-left').style.transform = `translateX(${-reticleGap}px)`;
+            document.getElementById('ch-right').style.transform = `translateX(${reticleGap}px)`;
+          }
 
           syncAccum += dt;
           if (syncAccum > 0.045) {
@@ -6626,11 +6995,24 @@
       });
 
       function isTouchDevice() {
-        return isStandaloneWebApp() || ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || Math.min(window.innerWidth, window.innerHeight) <= 820;
+        if (isStandaloneWebApp()) return true;
+        const ua = navigator.userAgent || '';
+        const isMobileUA = /iPhone|iPod|iPad|Android|Mobile/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        if (isMobileUA) return true;
+        const hasCoarsePointer = Boolean(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+        const hasFinePointer = Boolean(window.matchMedia && window.matchMedia('(pointer: fine)').matches);
+        if (hasFinePointer) return false;
+        return hasCoarsePointer;
+      }
+
+      function isUsingMobileControls() {
+        if (controlScheme === 'pc' || controlScheme === 'controller') return false;
+        if (controlScheme === 'mobile') return true;
+        return isTouchDevice();
       }
 
       function updateControlSchemeVisibility() {
-        const showMobile = (controlScheme === 'mobile') || (controlScheme === 'auto' && isTouchDevice());
+        const showMobile = isUsingMobileControls();
         const gameContainer = document.getElementById('game-container');
         if (gameContainer) {
           gameContainer.classList.toggle('mobile-hud-active', showMobile);
@@ -6654,15 +7036,18 @@
         if (preset === 'low') {
           renderer.setPixelRatio(1.0);
           renderer.shadowMap.enabled = false;
+          centerSpot.castShadow = false;
           dustParticles.visible = false;
         } else if (preset === 'ultra') {
-          renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2.0));
+          renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
           renderer.shadowMap.enabled = true;
+          centerSpot.castShadow = true;
           dustParticles.visible = true;
         } else {
-          // Zero-Lag Auto: crisp 1.25x cap for butter-smooth 60 FPS on laptops & iPhones
-          renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.35));
-          renderer.shadowMap.enabled = true;
+          // Zero-Lag Auto: crisp 1.25x cap with zero-stall lighting for butter-smooth 60 FPS on laptops & iPhones
+          renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
+          renderer.shadowMap.enabled = false;
+          centerSpot.castShadow = false;
           dustParticles.visible = true;
         }
         const vp = getGameViewportSize();
@@ -6745,6 +7130,9 @@
         document.getElementById('online-modal').classList.add('hidden');
         updateControlSchemeVisibility();
         resetPositionsForRound();
+        if (!isUsingMobileControls()) {
+          requestRawPointerLock();
+        }
         showCombatToast(`JOINED ROOM ${state.roomCode} (${state.mode.toUpperCase()})`);
       });
 
@@ -6767,6 +7155,27 @@
         let joyOrigin = { x: 0, y: 0 };
         const maxJoyRadius = 42;
 
+        function isTouchActiveInList(touchList, id) {
+          if (id === null || !touchList) return false;
+          for (let i = 0; i < touchList.length; i++) {
+            if (touchList[i].identifier === id) return true;
+          }
+          return false;
+        }
+
+        function applyTouchLookDelta(dx, dy) {
+          if (!state.roundActive || state.player.dying) return;
+          if (Math.hypot(dx, dy) > 360) return;
+          const sens = (state.player.ads ? 0.0032 : 0.0048) * state.mouseSensMult;
+          if (state.player.spectating) {
+            state.player.spectateYawOffset -= dx * sens;
+            state.player.spectatePitchOffset = Math.max(-0.65, Math.min(0.85, state.player.spectatePitchOffset + dy * sens));
+            return;
+          }
+          state.player.yaw -= dx * sens;
+          state.player.pitch = Math.max(-1.42, Math.min(1.42, state.player.pitch - dy * sens));
+        }
+
         function updateJoystickFromTouch(touch) {
           const pt = toGameTouchCoords(touch.clientX, touch.clientY);
           const dx = pt.x - joyOrigin.x;
@@ -6780,18 +7189,20 @@
           joyKnob.style.transform = `translate(${kx}px, ${ky}px)`;
           touchJoyVec.x = kx / maxJoyRadius;
           touchJoyVec.y = -ky / maxJoyRadius; // Up is +forward
-          touchJoyVec.sprinting = (touchJoyVec.y > 0.78);
+
+          // Hysteresis Sprint Latch: engages at > 0.72 upward push, and stays latched while forward > 0.30!
+          if (touchJoyVec.y > 0.72) {
+            touchJoyVec.sprinting = true;
+            state.player.ads = false;
+            btnAds.classList.remove('active-touch');
+          } else if (touchJoyVec.y < 0.30) {
+            touchJoyVec.sprinting = false;
+          }
+
           if (touchJoyVec.sprinting && state.player.crouching && !state.player.sliding) {
             state.player.crouching = false;
           }
           sprintBadge.style.opacity = touchJoyVec.sprinting ? '1' : '0';
-
-          // Map virtual joystick into WASD keys so movement physics & counter-strafing work identically!
-          keys['KeyW'] = touchJoyVec.y > 0.22;
-          keys['KeyS'] = touchJoyVec.y < -0.22;
-          keys['KeyD'] = touchJoyVec.x > 0.22;
-          keys['KeyA'] = touchJoyVec.x < -0.22;
-          keys['ShiftLeft'] = touchJoyVec.sprinting;
         }
 
         function resetJoystick() {
@@ -6801,19 +7212,16 @@
           touchJoyVec.y = 0;
           touchJoyVec.sprinting = false;
           sprintBadge.style.opacity = '0';
-          keys['KeyW'] = false;
-          keys['KeyS'] = false;
-          keys['KeyD'] = false;
-          keys['KeyA'] = false;
-          keys['ShiftLeft'] = false;
         }
 
         joyZone.addEventListener('touchstart', (e) => {
           e.preventDefault();
+          e.stopPropagation();
           sfx.init();
-          const t = e.changedTouches[0];
+          if (joyTouchId !== null && isTouchActiveInList(e.touches, joyTouchId)) return;
+          const t = (e.targetTouches && e.targetTouches[0]) || e.changedTouches[0];
+          if (!t) return;
           joyTouchId = t.identifier;
-          // Anchor joystick origin at the initial thumb-down point in game coordinates so CSS rotation/scale never offsets it!
           joyOrigin = toGameTouchCoords(t.clientX, t.clientY);
           updateJoystickFromTouch(t);
         }, { passive: false });
@@ -6827,43 +7235,68 @@
           }
         }, { passive: false });
 
-        joyZone.addEventListener('touchend', (e) => {
-          for (let i = 0; i < e.changedTouches.length; i++) {
-            if (e.changedTouches[i].identifier === joyTouchId) resetJoystick();
+        const endJoyTouch = (e) => {
+          if (!e || !e.changedTouches) {
+            resetJoystick();
+            return;
           }
-        });
-        joyZone.addEventListener('touchcancel', resetJoystick);
+          for (let i = 0; i < e.changedTouches.length; i++) {
+            if (e.changedTouches[i].identifier === joyTouchId) {
+              resetJoystick();
+              break;
+            }
+          }
+        };
+        joyZone.addEventListener('touchend', endJoyTouch);
+        joyZone.addEventListener('touchcancel', endJoyTouch);
 
-        // Right-Half Touch-Look Aiming (plus Drag-While-Firing on Primary Fire Button!)
+        // Full-Screen Multi-Touch Aiming (never steals or drops lookTouchId while sprinting!)
         let lookTouchId = null;
         let lastLookPos = { x: 0, y: 0 };
+        let fireTouchId = null;
+        let lastFirePos = { x: 0, y: 0 };
 
         function handleTouchLookMove(t) {
-          if (!state.roundActive || state.player.dying) return;
           const pt = toGameTouchCoords(t.clientX, t.clientY);
           const dx = pt.x - lastLookPos.x;
           const dy = pt.y - lastLookPos.y;
           lastLookPos = pt;
-          // Ignore any single-frame jump > 140px (e.g. if device orientation flipped mid-gesture)
-          if (Math.hypot(dx, dy) > 140) return;
-          const sens = (state.player.ads ? 0.0032 : 0.0048) * state.mouseSensMult;
-          state.player.yaw -= dx * sens;
-          state.player.pitch = Math.max(-1.42, Math.min(1.42, state.player.pitch - dy * sens));
+          applyTouchLookDelta(dx, dy);
         }
 
         lookZone.addEventListener('touchstart', (e) => {
           e.preventDefault();
           sfx.init();
-          const t = e.changedTouches[0];
-          lookTouchId = t.identifier;
-          lastLookPos = toGameTouchCoords(t.clientX, t.clientY);
+          const vp = getGameViewportSize();
+
+          for (let i = 0; i < e.changedTouches.length; i++) {
+            const cand = e.changedTouches[i];
+            if (cand.identifier === joyTouchId || cand.identifier === fireTouchId) continue;
+            const pt = toGameTouchCoords(cand.clientX, cand.clientY);
+
+            // If left thumb touches slightly outside #codm-joy-zone in the lower-left movement quadrant, route it to the joystick instead of stealing lookTouchId!
+            if (pt.x < vp.width * 0.38 && pt.y > vp.height * 0.38 && joyTouchId === null) {
+              joyTouchId = cand.identifier;
+              joyOrigin = pt;
+              updateJoystickFromTouch(cand);
+              continue;
+            }
+
+            // Otherwise, this touch is for aiming/looking around — claim lookTouchId immediately!
+            lookTouchId = cand.identifier;
+            lastLookPos = pt;
+            break;
+          }
         }, { passive: false });
 
         lookZone.addEventListener('touchmove', (e) => {
           e.preventDefault();
           for (let i = 0; i < e.changedTouches.length; i++) {
-            if (e.changedTouches[i].identifier === lookTouchId) {
-              handleTouchLookMove(e.changedTouches[i]);
+            const t = e.changedTouches[i];
+            if (t.identifier === joyTouchId) {
+              updateJoystickFromTouch(t);
+            } else if (t.identifier === lookTouchId) {
+              handleTouchLookMove(t);
             }
           }
         }, { passive: false });
@@ -6874,20 +7307,26 @@
             return;
           }
           for (let i = 0; i < e.changedTouches.length; i++) {
-            if (e.changedTouches[i].identifier === lookTouchId) lookTouchId = null;
+            const id = e.changedTouches[i].identifier;
+            if (id === joyTouchId) {
+              resetJoystick();
+            }
+            if (id === lookTouchId) {
+              lookTouchId = null;
+            }
           }
         };
         lookZone.addEventListener('touchend', endLookTouch);
         lookZone.addEventListener('touchcancel', endLookTouch);
 
         // CoD Mobile Right-Thumb Fire Button (Supports Hold to Auto-Fire + Drag Thumb to Aim!)
-        let fireTouchId = null;
-        let lastFirePos = { x: 0, y: 0 };
         btnFire.addEventListener('touchstart', (e) => {
           e.preventDefault();
+          e.stopPropagation();
           sfx.init();
           btnFire.classList.add('active-touch');
-          const t = e.changedTouches[0];
+          const t = (e.targetTouches && e.targetTouches[0]) || e.changedTouches[0];
+          if (!t) return;
           fireTouchId = t.identifier;
           lastFirePos = toGameTouchCoords(t.clientX, t.clientY);
           mouseFireHeld = true;
@@ -6903,17 +7342,26 @@
               const dx = pt.x - lastFirePos.x;
               const dy = pt.y - lastFirePos.y;
               lastFirePos = pt;
-              const sens = (state.player.ads ? 0.0032 : 0.0046) * state.mouseSensMult;
-              state.player.yaw -= dx * sens;
-              state.player.pitch = Math.max(-1.42, Math.min(1.42, state.player.pitch - dy * sens));
+              applyTouchLookDelta(dx, dy);
             }
           }
         }, { passive: false });
 
-        const endFireTouch = () => {
-          fireTouchId = null;
-          mouseFireHeld = false;
-          btnFire.classList.remove('active-touch');
+        const endFireTouch = (e) => {
+          if (e && e.changedTouches) {
+            for (let i = 0; i < e.changedTouches.length; i++) {
+              if (e.changedTouches[i].identifier === fireTouchId) {
+                fireTouchId = null;
+                mouseFireHeld = false;
+                btnFire.classList.remove('active-touch');
+                break;
+              }
+            }
+          } else {
+            fireTouchId = null;
+            mouseFireHeld = false;
+            btnFire.classList.remove('active-touch');
+          }
         };
         btnFire.addEventListener('touchend', endFireTouch);
         btnFire.addEventListener('touchcancel', endFireTouch);
@@ -6925,15 +7373,60 @@
         });
         btnFire.addEventListener('mouseup', () => { mouseFireHeld = false; });
 
+        // Helper: allow any action button to also pan the camera smoothly if the player drags their thumb across it while sprinting!
+        function attachButtonWithLookDrag(btnEl, onActionTap, isHoldFire = false) {
+          if (!btnEl) return;
+          let btnTouchId = null;
+          let lastBtnPos = { x: 0, y: 0 };
+          btnEl.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            sfx.init();
+            const t = (e.targetTouches && e.targetTouches[0]) || e.changedTouches[0];
+            if (t) {
+              btnTouchId = t.identifier;
+              lastBtnPos = toGameTouchCoords(t.clientX, t.clientY);
+            }
+            if (isHoldFire) {
+              mouseFireHeld = true;
+              if (state.countdownTime <= 0) attemptPlayerFire();
+            } else if (onActionTap) {
+              onActionTap(e);
+            }
+          }, { passive: false });
+
+          btnEl.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            for (let i = 0; i < e.changedTouches.length; i++) {
+              const t = e.changedTouches[i];
+              if (t.identifier === btnTouchId) {
+                const pt = toGameTouchCoords(t.clientX, t.clientY);
+                applyTouchLookDelta(pt.x - lastBtnPos.x, pt.y - lastBtnPos.y);
+                lastBtnPos = pt;
+              }
+            }
+          }, { passive: false });
+
+          const endBtnTouch = (e) => {
+            if (!e || !e.changedTouches) {
+              btnTouchId = null;
+              if (isHoldFire) mouseFireHeld = false;
+              return;
+            }
+            for (let i = 0; i < e.changedTouches.length; i++) {
+              if (e.changedTouches[i].identifier === btnTouchId) {
+                btnTouchId = null;
+                if (isHoldFire) mouseFireHeld = false;
+                break;
+              }
+            }
+          };
+          btnEl.addEventListener('touchend', endBtnTouch);
+          btnEl.addEventListener('touchcancel', endBtnTouch);
+        }
+
         // Upper-Left Claw Hipfire Button
-        btnHip.addEventListener('touchstart', (e) => {
-          e.preventDefault();
-          sfx.init();
-          mouseFireHeld = true;
-          if (state.countdownTime <= 0) attemptPlayerFire();
-        }, { passive: false });
-        btnHip.addEventListener('touchend', () => { mouseFireHeld = false; });
-        btnHip.addEventListener('touchcancel', () => { mouseFireHeld = false; });
+        attachButtonWithLookDrag(btnHip, null, true);
         btnHip.addEventListener('click', () => {
           if (state.countdownTime <= 0) attemptPlayerFire();
         });
@@ -6942,9 +7435,10 @@
         const toggleAds = (e) => {
           if (e) e.preventDefault();
           state.player.ads = !state.player.ads;
+          if (state.player.ads) touchJoyVec.sprinting = false;
           btnAds.classList.toggle('active-touch', state.player.ads);
         };
-        btnAds.addEventListener('touchstart', toggleAds, { passive: false });
+        attachButtonWithLookDrag(btnAds, toggleAds, false);
         btnAds.addEventListener('click', toggleAds);
 
         // Jump / Mantle Button & Tappable Mantle Prompt Banner
@@ -6952,11 +7446,11 @@
           if (e) e.preventDefault();
           triggerMantleOrJump();
         };
-        btnJump.addEventListener('touchstart', onJumpTap, { passive: false });
+        attachButtonWithLookDrag(btnJump, onJumpTap, false);
         btnJump.addEventListener('click', onJumpTap);
         const mantleBannerEl = document.getElementById('mantle-prompt');
         if (mantleBannerEl) {
-          mantleBannerEl.addEventListener('touchstart', onJumpTap, { passive: false });
+          attachButtonWithLookDrag(mantleBannerEl, onJumpTap, false);
           mantleBannerEl.addEventListener('click', onJumpTap);
         }
 
@@ -6972,15 +7466,15 @@
             state.player.crouching = !state.player.crouching;
           }
         };
-        btnCrouch.addEventListener('touchstart', onCrouchTap, { passive: false });
+        attachButtonWithLookDrag(btnCrouch, onCrouchTap, false);
         btnCrouch.addEventListener('click', onCrouchTap);
 
         // Reload, Frag & Stun Buttons
-        btnReload.addEventListener('touchstart', (e) => { e.preventDefault(); triggerReload(); }, { passive: false });
+        attachButtonWithLookDrag(btnReload, () => triggerReload(), false);
         btnReload.addEventListener('click', triggerReload);
-        btnFrag.addEventListener('touchstart', (e) => { e.preventDefault(); throwGrenade('frag'); }, { passive: false });
+        attachButtonWithLookDrag(btnFrag, () => throwGrenade('frag'), false);
         btnFrag.addEventListener('click', () => throwGrenade('frag'));
-        btnStun.addEventListener('touchstart', (e) => { e.preventDefault(); throwGrenade('stun'); }, { passive: false });
+        attachButtonWithLookDrag(btnStun, () => throwGrenade('stun'), false);
         btnStun.addEventListener('click', () => throwGrenade('stun'));
       })();
 
