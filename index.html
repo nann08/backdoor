@@ -496,7 +496,7 @@
       <!-- Pre-Round Extended Countdown & Overtime Flag Capture Overlay -->
       <div class="absolute top-14 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none">
         <div id="countdown-banner" class="hidden bg-black/85 border border-amber-400/60 px-3.5 py-1 rounded-xs mb-1.5 text-center shadow-lg">
-          <div class="text-[8px] font-mono-cod text-amber-300 tracking-widest uppercase">WEAPONS LOCKED — MOVE, SPRINT, LOOK & SELECT LOADOUT</div>
+          <div class="text-[8px] font-mono-cod text-amber-300 tracking-widest uppercase">MOVEMENT LOCKED — FREE LOOK &amp; SELECT LOADOUT</div>
           <div id="countdown-number" class="font-cod text-xl font-bold text-white tracking-wider">5</div>
         </div>
 
@@ -3595,7 +3595,7 @@
         const teamSign = (state.playerTeam === 'bravo') ? -1 : 1; // +1 = South (Alpha), -1 = North (Bravo)
 
         state.roundActive = true;
-        state.countdownTime = 2.0; // Quick 2-second pre-round gate: free mouse look & loadout pick!
+        state.countdownTime = 5.0; // 5-second pre-round countdown: movement locked, free look & loadout pick!
         pcSprintLatch = false;
         pcAutoRunLatch = false;
         if (isTDM) {
@@ -3868,7 +3868,7 @@
 
       function triggerMantleOrJump() {
         const p = state.player;
-        if (!state.roundActive || p.dying || p.mantling) return;
+        if (!state.roundActive || p.dying || p.mantling || state.countdownTime > 0) return;
 
         // Slide-cancel if currently sliding!
         if (p.sliding) {
@@ -4166,6 +4166,7 @@
 
             // A (button 1): Crouch / Slide
             if (btnJustPressed(1)) {
+              if (state.countdownTime > 0) return;
               if ((p.sprinting || gamepadState.moveY > 0.78) && p.grounded && !p.sliding) {
                 p.sliding = true;
                 p.slideTimer = 0.52;
@@ -4320,7 +4321,7 @@
 
       function triggerCoDCrouchOrSlide() {
         const p = state.player;
-        if (!state.roundActive || p.dying || p.mantling) return;
+        if (!state.roundActive || p.dying || p.mantling || state.countdownTime > 0) return;
         const movingFwd = Boolean(keys['KeyW'] || keys['ArrowUp']);
         const sprintingNow = Boolean(p.sprinting || ((keys['ShiftLeft'] || keys['ShiftRight'] || pcSprintLatch) && movingFwd));
         if (sprintingNow && p.grounded && !p.sliding) {
@@ -6415,7 +6416,7 @@
           p.lean += (targetLean - p.lean) * Math.min(1, dt * 14);
 
           // Call of Duty PC Movement: WASD (with Arrow keys backup), immediate stop on key release
-          const canMoveNow = true;
+          const canMoveNow = (state.countdownTime <= 0);
           const shiftHeld = Boolean(keys['ShiftLeft'] || keys['ShiftRight']);
           const kbForward = ((keys['KeyW'] || keys['ArrowUp']) ? 1 : 0) - ((keys['KeyS'] || keys['ArrowDown']) ? 1 : 0);
           const kbStrafe = ((keys['KeyD'] || keys['ArrowRight']) ? 1 : 0) - ((keys['KeyA'] || keys['ArrowLeft']) ? 1 : 0);
@@ -6433,7 +6434,7 @@
           let moveStrafe = canMoveNow ? rawStrafe : 0;
           const isMoving = (Math.hypot(moveForward, moveStrafe) > 0.04);
 
-          const mantleCand = findMantleCandidate(p);
+          const mantleCand = canMoveNow ? findMantleCandidate(p) : null;
           document.getElementById('mantle-prompt').classList.toggle('hidden', !mantleCand);
           const mobileJumpSpan = document.querySelector('#codm-btn-jump span');
           if (mobileJumpSpan) {
